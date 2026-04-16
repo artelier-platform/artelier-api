@@ -1,5 +1,6 @@
 package com.artelier.api.dto.request;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -7,19 +8,31 @@ import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 @Data
+@Schema(description = "User registration request")
 public class RegisterRequest {
 
-    @Email(message = "Must be a valid email address")
-    @NotBlank(message = "Email is required")
+    @Schema(
+            example = "user@example.com"
+    )
+    @Email
+    @NotBlank
     private String email;
 
-    @NotBlank(message = "Password is required")
-    @Size(min = 8, message = "Password must be at least 8 characters")
+    @Schema(
+            example = "StrongPass123"
+    )
+    @NotBlank
+    @Size(min = 8)
     private String password;
 
-    @NotBlank(message = "Full name is required")
+    @Schema(
+            example = "John Doe"
+    )
+    @NotBlank
     private String fullName;
 
-    @Pattern(regexp = "^\\+?[0-9]{7,15}$", message = "Phone number is not valid")
+    @Schema(
+            example = "+573001234567"
+    )
     private String phone;
 }

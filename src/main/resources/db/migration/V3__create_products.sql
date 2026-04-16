@@ -1,0 +1,25 @@
+-- ============================================================
+-- V3: Products
+-- Matches: Product.java, StockType enum
+-- ============================================================
+
+CREATE TYPE stock_type_enum AS ENUM ('AVAILABLE', 'MADE_TO_ORDER');
+
+CREATE TABLE products (
+                          id               UUID           PRIMARY KEY DEFAULT gen_random_uuid(),
+                          category_id      UUID           NOT NULL REFERENCES categories(id),
+                          name             VARCHAR(150)   NOT NULL,
+                          slug             VARCHAR(160)   NOT NULL UNIQUE,
+                          description      VARCHAR(500),
+                          story            TEXT,
+                          price            NUMERIC(10,2)  NOT NULL CHECK (price > 0),
+                          stock_type       stock_type_enum NOT NULL,
+                          stock_quantity   INTEGER        CHECK (stock_quantity >= 0),
+                          is_custom_order  BOOLEAN        NOT NULL DEFAULT FALSE,
+                          is_active        BOOLEAN        NOT NULL DEFAULT TRUE,
+                          created_at       TIMESTAMPTZ    NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_products_slug        ON products(slug);
+CREATE INDEX idx_products_category_id  ON products(category_id);
+CREATE INDEX idx_products_is_active    ON products(is_active);
