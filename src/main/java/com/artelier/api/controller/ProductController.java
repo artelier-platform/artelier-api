@@ -12,9 +12,8 @@ import io.swagger.v3.oas.annotations.responses.*;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.AllArgsConstructor;
 import org.springframework.data.domain.*;
-import org.springframework.data.web.PageableDefault;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -23,6 +22,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.UUID;
 
+@AllArgsConstructor
 @RestController
 @RequestMapping("/products")
 @Tag(
@@ -31,11 +31,8 @@ import java.util.UUID;
 )
 public class ProductController {
 
-    @Autowired
-    private ProductService productService;
-
-    @Autowired
-    private CloudinaryService cloudinaryService;
+    private final ProductService productService;
+    private final CloudinaryService cloudinaryService;
 
 
 
@@ -50,37 +47,7 @@ public class ProductController {
     })
     @GetMapping
     public ResponseEntity<ApiResponse<Page<ProductResponse>>> getAllProducts(
-
-            @Parameter(
-                    description = "Filter by category UUID",
-                    example = "550e8400-e29b-41d4-a716-446655440000"
-            )
-            @RequestParam(required = false)
-            UUID categoryId,
-
-            @Parameter(
-                    description = "Filter by product name (partial match)",
-                    example = "anillo"
-            )
-            @RequestParam(required = false)
-            String name,
-
-            @Parameter(
-                    description = "Minimum price",
-                    example = "10000"
-            )
-            @RequestParam(required = false)
-            java.math.BigDecimal minPrice,
-
-            @Parameter(
-                    description = "Maximum price",
-                    example = "50000"
-            )
-            @RequestParam(required = false)
-            java.math.BigDecimal maxPrice,
-
-            @Parameter(description = "Pagination configuration")
-            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC)
+            @RequestParam(required = false) UUID categoryId,
             Pageable pageable
     ) {
 

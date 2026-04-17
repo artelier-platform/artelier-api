@@ -6,13 +6,14 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
 
+@AllArgsConstructor
 @RestController
 @RequestMapping("/admin")
 @Tag(
@@ -22,8 +23,7 @@ import java.util.UUID;
 @SecurityRequirement(name = "bearerAuth")
 public class AdminController {
 
-    @Autowired
-    private AdminService adminService;
+    private final AdminService adminService;
 
     @Operation(
             summary = "Ban user",

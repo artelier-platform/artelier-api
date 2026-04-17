@@ -49,9 +49,11 @@ public class Product {
 
     private Integer stockQuantity;
 
+    @Builder.Default
     @Column(nullable = false)
     private Boolean isCustomOrder = false;
 
+    @Builder.Default
     @Column(nullable = false)
     private Boolean isActive = true;
 
@@ -65,6 +67,7 @@ public class Product {
         }
     }
 
+    @Builder.Default
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)

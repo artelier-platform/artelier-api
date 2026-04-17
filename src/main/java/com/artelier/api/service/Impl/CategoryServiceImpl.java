@@ -7,19 +7,17 @@ import com.artelier.api.exception.ArtelierException;
 import com.artelier.api.mapper.CategoryMapper;
 import com.artelier.api.repository.CategoryRepository;
 import com.artelier.api.service.CategoryService;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+@AllArgsConstructor
 @Service
 public class CategoryServiceImpl implements CategoryService {
 
-    @Autowired
-    private CategoryRepository categoryRepository;
-
-    @Autowired
-    private CategoryMapper categoryMapper;
+    private final CategoryRepository categoryRepository;
+    private final CategoryMapper categoryMapper;
 
     @Override
     public List<CategoryResponse> getAll() {

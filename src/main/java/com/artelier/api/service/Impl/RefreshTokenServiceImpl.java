@@ -5,7 +5,7 @@ import com.artelier.api.entity.User;
 import com.artelier.api.exception.ArtelierException;
 import com.artelier.api.repository.RefreshTokenRepository;
 import com.artelier.api.service.RefreshTokenService;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -13,14 +13,14 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
+@RequiredArgsConstructor
 @Service
 public class RefreshTokenServiceImpl implements RefreshTokenService {
 
     @Value("${jwt.refresh-expiration-days}")
     private long refreshExpirationDays;
 
-    @Autowired
-    private RefreshTokenRepository refreshTokenRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
 
     @Override
     public RefreshToken create(User user) {

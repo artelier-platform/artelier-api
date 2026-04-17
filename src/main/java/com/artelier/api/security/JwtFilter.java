@@ -1,8 +1,8 @@
 package com.artelier.api.security;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
+import lombok.AllArgsConstructor;
 import org.jspecify.annotations.NonNull;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -12,11 +12,11 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.List;
 
+@AllArgsConstructor
 @Component
 public class JwtFilter extends OncePerRequestFilter {
 
-    @Autowired
-    private JwtUtil jwtUtil;
+    private final JwtUtil jwtUtil;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -39,7 +39,7 @@ public class JwtFilter extends OncePerRequestFilter {
                             new UsernamePasswordAuthenticationToken(
                                     username,
                                     null,
-                                    List.of(new SimpleGrantedAuthority("ROLE_" + role))
+                                    List.of(new SimpleGrantedAuthority("ROLE_" + role.trim()))
                             );
 
                     SecurityContextHolder.getContext().setAuthentication(auth);

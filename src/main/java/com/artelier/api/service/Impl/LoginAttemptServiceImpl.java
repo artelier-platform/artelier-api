@@ -16,17 +16,19 @@ public class LoginAttemptServiceImpl {
                 .capacity(5)
                 .refillIntervally(1, Duration.ofMinutes(5))
                 .build();
+
         return Bucket.builder().addLimit(limit).build();
     }
 
     private Bucket getBucket(String key) {
-        return buckets.computeIfAbsent(key, k -> newBucket());
+        return buckets.computeIfAbsent(key, ignored -> newBucket());
     }
 
     public boolean tryConsume(String key) {
         return getBucket(key).tryConsume(1);
     }
 
+    @SuppressWarnings("unused")
     public long getAvailableTokens(String key) {
         return getBucket(key).getAvailableTokens();
     }
