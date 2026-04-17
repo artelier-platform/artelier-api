@@ -4,16 +4,16 @@ import com.artelier.api.entity.User;
 import com.artelier.api.exception.ArtelierException;
 import com.artelier.api.repository.UserRepository;
 import com.artelier.api.service.AdminService;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.UUID;
 
+@AllArgsConstructor
 @Service
 public class AdminServiceImpl implements AdminService {
 
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
 
 
     public void setBanned(UUID userId, boolean banned) {

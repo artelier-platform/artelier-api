@@ -1,6 +1,7 @@
 package com.artelier.api.security;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import lombok.Getter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import javax.crypto.SecretKey;
@@ -11,14 +12,13 @@ public class JwtUtil {
 
     @Value("${jwt.secret}")
     private String secret;
-    private static final long EXPIRATION_MS = 900_000L;
+
+    @Getter
+    @Value("${jwt.expiration-ms}")
+    private long expirationMs;
 
     private SecretKey getKey() {
         return Keys.hmacShaKeyFor(secret.getBytes());
-    }
-
-    public long getExpirationMs() {
-        return EXPIRATION_MS;
     }
 
     public String generateToken(String username, String role) {
@@ -26,7 +26,7 @@ public class JwtUtil {
                 .subject(username)
                 .claim("role", role)
                 .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + EXPIRATION_MS))
+                .expiration(new Date(System.currentTimeMillis() + expirationMs))
                 .signWith(getKey())
                 .compact();
     }

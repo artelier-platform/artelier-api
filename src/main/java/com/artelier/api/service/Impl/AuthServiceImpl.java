@@ -11,27 +11,19 @@ import com.artelier.api.repository.UserRepository;
 import com.artelier.api.security.JwtUtil;
 import com.artelier.api.service.AuthService;
 import com.artelier.api.service.RefreshTokenService;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.AllArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+@AllArgsConstructor
 @Service
 public class AuthServiceImpl implements AuthService {
 
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private JwtUtil jwtUtil;
-
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-
-    @Autowired
-    private RefreshTokenService refreshTokenService;
-
-    @Autowired
-    private LoginAttemptServiceImpl loginAttemptService;
+    private final UserRepository userRepository;
+    private final JwtUtil jwtUtil;
+    private final PasswordEncoder passwordEncoder;
+    private final RefreshTokenService refreshTokenService;
+    private final LoginAttemptServiceImpl loginAttemptService;
 
     @Override
     public AuthResponse login(LoginRequest loginRequest) {
