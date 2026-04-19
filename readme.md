@@ -1,7 +1,7 @@
-<a name="top"></a>
+<a id="top"></a>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/MimiRandomS/artelier-api/main/.github/banner.png" alt="Artelier API" width="100%"/>
+  <img src="docs/primary_logo.png" alt="Artelier API" width="100%"/>
 </p>
 
 <p align="center">
@@ -9,10 +9,9 @@
   <img src="https://img.shields.io/badge/Spring_Boot-4.0-6DB33F?logo=springboot&logoColor=white" alt="Spring Boot"/>
   <img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white" alt="PostgreSQL"/>
   <img src="https://img.shields.io/badge/JWT-Auth-black" alt="JWT"/>
-  <img src="https://img.shields.io/badge/Cloudinary-Media-blue" alt="Cloudinary"/>
+  <img src="https://img.shields.io/badge/Cloudinary-Media-3448C5" alt="Cloudinary"/>
   <img src="https://img.shields.io/badge/version-0.1.0--SNAPSHOT-blue" alt="version"/>
-  <img src="https://img.shields.io/github/last-commit/MimiRandomS/artelier-api" alt="last commit"/>
-  <img src="https://img.shields.io/badge/coverage-0%25-lightgrey" alt="coverage"/>
+  <img src="https://img.shields.io/github/last-commit/artelier-platform/artelier-api" alt="last commit"/>
   <img src="https://img.shields.io/badge/license-MIT-green" alt="license"/>
 </p>
 
@@ -26,11 +25,12 @@
 ## Table of Contents
 
 - [About the Project](#-about-the-project)
-- [Tech Stack](#-tech-stack)
+- [Tech Stack](#-stack-backend)
 - [Architecture Overview](#-architecture-overview)
+- [Testing](#-testing--quality)
 - [Getting Started](#-getting-started)
 - [Environment Variables](#-environment-variables)
-- [Deploy](#-deploy)
+- [Deploy](#-deployment--infrastructure)
 - [Contributing](#-contributing)
 - [License](#-license)
 - [Author](#-author)
@@ -51,34 +51,25 @@ Up until now, sales have been mostly word-of-mouth. The artist has an Instagram 
 - Gives the artist an admin dashboard to manage products, orders, and media uploads
 - Lays the groundwork for future content like process videos and workshop bookings
 
-This is also a full-stack portfolio project demonstrating a production-grade architecture with Spring Boot, JWT auth, cache management, Flyway migrations, Cloudinary integration, and CI/CD.
+This is also a full-stack portfolio project demonstrating a production-grade architecture with Spring Boot, JWT auth, Flyway migrations, Cloudinary integration, and CI/CD.
 
 ---
 
-## 🛠 Tech Stack
+## 🚀 Stack Backend
 
-### Backend
 | Layer | Technology |
-|---|---|
-| Language | Java 21 |
-| Framework | Spring Boot 4.0 (WebMVC) |
-| ORM | Spring Data JPA + Hibernate |
-| Database | PostgreSQL 16 |
-| Migrations | Flyway |
-| Auth | Spring Security + JWT (jjwt 0.12.6) |
-| Cache | Spring Cache |
-| Rate Limiting | Bucket4j 8.18.0 |
-| Image Storage | Cloudinary (cloudinary-http5 2.3.2) |
-| Mapping | MapStruct 1.6.3 |
-| Boilerplate | Lombok |
-| Docs | SpringDoc OpenAPI 3.0.2 (Swagger UI) |
-| Monitoring | Spring Actuator |
-| Dev Config | springboot3-dotenv |
-
+|-------|-------------|
+| **Language** | ![Java](https://img.shields.io/badge/Java-21-007396?logo=openjdk&logoColor=white) |
+| **Frameworks** | ![Spring Boot](https://img.shields.io/badge/Spring_Boot-4.0-6DB33F?logo=springboot&logoColor=white) ![Spring Security](https://img.shields.io/badge/Spring_Security-JWT-6DB33F?logo=springsecurity&logoColor=white) ![Spring Cache](https://img.shields.io/badge/Spring_Cache-Enabled-6DB33F?logo=spring&logoColor=white) |
+| **Persistence** | ![Spring Data JPA](https://img.shields.io/badge/Spring_Data_JPA-Hibernate-59666C?logo=hibernate&logoColor=white) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white) ![Flyway](https://img.shields.io/badge/Flyway-Migrations-CC0200?logo=flyway&logoColor=white) |
+| **Infrastructure** | ![Bucket4j](https://img.shields.io/badge/Bucket4j-8.18.0-blue) ![Cloudinary](https://img.shields.io/badge/Cloudinary-Storage-3448C5?logo=cloudinary&logoColor=white) |
+| **Utilities** | ![MapStruct](https://img.shields.io/badge/MapStruct-1.6.3-orange) ![Lombok](https://img.shields.io/badge/Lombok-Enabled-red) ![dotenv](https://img.shields.io/badge/dotenv-Config-ECD53F?logo=dotenv&logoColor=black) |
+| **Docs & Monitoring** | ![Swagger](https://img.shields.io/badge/Swagger-OpenAPI-85EA2D?logo=swagger&logoColor=black) ![Spring Actuator](https://img.shields.io/badge/Spring_Actuator-Monitoring-6DB33F?logo=springboot&logoColor=white) |
 ---
 
 ## 🏗 Architecture Overview
 
+![Artelier API — Architecture.svg](docs/Artelier%20API%20%E2%80%94%20Architecture.svg)
 The backend follows a layered architecture based on Spring Boot best practices:
 
 - **Controller Layer** → Exposes REST endpoints (public and admin APIs)
@@ -109,13 +100,61 @@ com.artelier.api
 
 ---
 
+## 🧪 Testing & Quality
+
+### Testing Stack
+
+<p align="center">
+
+<img src="https://img.shields.io/badge/JUnit_5-Test_Framework-25A162?logo=junit5&logoColor=white" alt="JUnit 5"/>
+<img src="https://img.shields.io/badge/Mockito-Mocking-78A641?logo=mockito&logoColor=white" alt="Mockito"/>
+<img src="https://img.shields.io/badge/Spring_MockMvc-HTTP_Testing-6DB33F?logo=spring&logoColor=white" alt="Spring MockMvc"/>
+<img src="https://img.shields.io/badge/JaCoCo-Code_Coverage-BF1E2E" alt="JaCoCo"/>
+
+</p>
+
+### Code Quality Metrics
+
+<p align="center">
+
+<img src="https://sonarcloud.io/api/project_badges/measure?project=MimiRandomS_artelier-api&metric=alert_status" alt="Quality Gate"/>
+<img src="https://sonarcloud.io/api/project_badges/measure?project=MimiRandomS_artelier-api&metric=coverage" alt="Coverage"/>
+<img src="https://sonarcloud.io/api/project_badges/measure?project=MimiRandomS_artelier-api&metric=bugs" alt="Bugs"/>
+<img src="https://sonarcloud.io/api/project_badges/measure?project=MimiRandomS_artelier-api&metric=vulnerabilities" alt="Vulnerabilities"/>
+<img src="https://sonarcloud.io/api/project_badges/measure?project=MimiRandomS_artelier-api&metric=code_smells" alt="Code Smells"/>
+<img src="https://sonarcloud.io/api/project_badges/measure?project=MimiRandomS_artelier-api&metric=duplicated_lines_density" alt="Duplications"/>
+
+</p>
+
+The project includes a **comprehensive automated test suite** covering both  
+**service and controller layers**, with coverage tracked via **JaCoCo**  
+and static analysis performed using **SonarCloud**.
+
+### Running Tests
+
+```bash
+# Run all tests
+./mvnw test
+
+# Run with coverage report
+./mvnw verify
+
+# Open the coverage report
+open target/site/jacoco/index.html
+```
+
+The JaCoCo report is generated at `target/site/jacoco/index.html` after running `mvn verify`.
+
+---
+
 ## 🚀 Getting Started
 
 ### Prerequisites
 
-- Java 21
-- Docker + Docker Compose
-- Maven 3.9+
+![Java](https://img.shields.io/badge/Java-21-007396?logo=openjdk&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Containerization-2496ED?logo=docker&logoColor=white)
+![Docker Compose](https://img.shields.io/badge/Docker_Compose-Orchestration-2496ED?logo=docker&logoColor=white)
+![Maven](https://img.shields.io/badge/Maven-3.9+-C71A36?logo=apachemaven&logoColor=white)
 
 ### 1. Clone the repo
 
@@ -203,17 +242,29 @@ ACTUATOR_EXPOSE=health,info,metrics
 
 ---
 
-## ☁️ Deploy
+## ☁️ Deployment & Infrastructure
 
-| Environment | Platform | Notes |
-|---|---|---|
-| Backend | Railway | Auto-deploy from `main` branch |
-| Database | Railway PostgreSQL | Managed, same project |
-| Frontend | Vercel | Auto-deploy from `main` branch |
-| Media | Cloudinary | Free tier for dev |
+### Platforms
 
-Flyway runs automatically on startup — no manual DB setup needed in production beyond providing the connection variables.
+<p align="center">
 
+<img src="https://img.shields.io/badge/Backend-Render-46E3B7?logo=render&logoColor=black" alt="Render Backend"/>
+<img src="https://img.shields.io/badge/Database-Supabase_PostgreSQL-3ECF8E?logo=supabase&logoColor=white" alt="Supabase Database"/>
+<img src="https://img.shields.io/badge/Frontend-Vercel-black?logo=vercel&logoColor=white" alt="Vercel Frontend"/>
+<img src="https://img.shields.io/badge/Media-Cloudinary-3448C5?logo=cloudinary&logoColor=white" alt="Cloudinary Media"/>
+
+</p>
+
+### Deployment Notes
+
+- **Backend:** Deployed on **Render** with automatic deploys from the `main` branch
+- **Database:** Managed **Supabase PostgreSQL** instance
+- **Frontend:** Hosted on **Vercel** with automatic deploys from `main`
+- **Media Storage:** Images handled via **Cloudinary** (free tier)
+
+**Database migrations** are handled automatically using **Flyway**  
+during application startup — no manual database setup required  
+beyond providing the connection variables.
 ---
 
 ## 🤝 Contributing
@@ -238,7 +289,12 @@ Distributed under the MIT License. See `LICENSE` for details.
 ## 👨‍💻 Author
 
 <p align="center">
-  <img src="https://avatars.githubusercontent.com/MimiRandomS" width="120" style="border-radius:50%"/>
+  <img 
+    src="https://avatars.githubusercontent.com/MimiRandomS" 
+    width="120" 
+    alt="MimiRandomS GitHub avatar"
+    style="border-radius:50%"
+  />
 </p>
 
 <p align="center">
@@ -266,3 +322,4 @@ This project reflects my approach to backend development — designing clean, ma
 </p>
 
 [Back to top](#top)
+

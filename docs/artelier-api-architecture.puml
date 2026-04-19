@@ -1,0 +1,190 @@
+@startuml Artelier API — Architecture
+
+!theme plain
+skinparam backgroundColor transparent
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam linetype ortho
+skinparam nodesep 30
+skinparam ranksep 40
+
+' ── Estilos ────────────────────────────────────────────────────
+skinparam package {
+  BorderColor      #888780
+  BackgroundColor  transparent
+  FontSize         12
+  FontStyle        bold
+}
+
+skinparam component {
+  BorderColor      #888780
+  BackgroundColor  #F1EFE8
+  FontColor        #2C2C2A
+  FontSize         11
+}
+
+skinparam database {
+  BorderColor      #185FA5
+  BackgroundColor  #E6F1FB
+  FontColor        #042C53
+}
+
+skinparam cloud {
+  BorderColor      #854F0B
+  BackgroundColor  #FAEEDA
+  FontColor        #412402
+}
+
+skinparam actor {
+  BorderColor      #888780
+  BackgroundColor  #F1EFE8
+}
+
+skinparam note {
+  BorderColor      #D3D1C7
+  BackgroundColor  #F9F8F4
+  FontColor        #5F5E5A
+  FontSize         10
+}
+
+skinparam arrow {
+  Color            #5F5E5A
+  FontSize         10
+  FontColor        #888780
+}
+
+' ── Actor externo ──────────────────────────────────────────────
+actor "Client" as CLIENT
+
+' ── Capa: Security ─────────────────────────────────────────────
+package "Security" {
+  component [JwtFilter]     as JF
+  component [JwtUtil]       as JU
+  component [SecurityConfig] as SECC
+}
+
+' ── Capa: Exception (transversal) ──────────────────────────────
+package "Exception" {
+  component [GlobalExceptionHandler] as GEH
+  component [ArtelierException]      as AEX
+}
+
+' ── Capa: Controller ───────────────────────────────────────────
+package "Controller" {
+  component [AuthController]     as AUTHC
+  component [AdminController]    as ADMINC
+  component [CategoryController] as CATC
+  component [ProductController]  as PRODC
+}
+
+' ── Capa: Service ──────────────────────────────────────────────
+package "Service" {
+  component [AuthService]         as AUTHS
+  component [AdminService]        as ADMINS
+  component [CategoryService]     as CATS
+  component [ProductService]      as PRODS
+  component [RefreshTokenService] as REFS
+  component [CloudinaryService]   as CLOUDS
+}
+
+' ── Capa: Mapper (MapStruct) ───────────────────────────────────
+package "Mapper" {
+  component [CategoryMapper]     as CATM
+  component [ProductMapper]      as PRODM
+  component [ProductImageMapper] as PRODIMGM
+}
+
+' ── Capa: Repository ───────────────────────────────────────────
+package "Repository" {
+  component [UserRepository]         as USERR
+  component [RefreshTokenRepository] as REFTOKENR
+  component [CategoryRepository]     as CATR
+  component [ProductRepository]      as PRODR
+  component [ProductImageRepository] as PRODIMGR
+}
+
+' ── Infraestructura ────────────────────────────────────────────
+database "PostgreSQL 16" as DB
+cloud    "Cloudinary"     as CDN
+
+' ── Relaciones ─────────────────────────────────────────────────
+
+CLIENT      -->  JF       : HTTP request
+JF          ..>  JU       : validate JWT
+JF          -->  AUTHC
+JF          -->  ADMINC
+JF          -->  CATC
+JF          -->  PRODC
+
+' Exception handler intercepta todos los controllers
+GEH         ..>  AUTHC    : intercepts
+GEH         ..>  ADMINC   : intercepts
+GEH         ..>  CATC     : intercepts
+GEH         ..>  PRODC    : intercepts
+GEH         ..>  AEX      : wraps
+
+' Controllers → Services
+AUTHC       -->  AUTHS
+ADMINC      -->  ADMINS
+CATC        -->  CATS
+PRODC       -->  PRODS
+PRODC       ..>  CLOUDS
+
+' Services → Repositories
+AUTHS       -->  USERR
+AUTHS       -->  REFS
+ADMINS      -->  USERR
+CATS        -->  CATR
+PRODS       -->  PRODR
+PRODS       -->  PRODIMGR
+REFS        -->  REFTOKENR
+
+' Services → Mappers
+CATS        ..>  CATM
+PRODS       ..>  PRODM
+PRODS       ..>  PRODIMGM
+
+' Repositories → DB
+USERR       -->  DB
+REFTOKENR   -->  DB
+CATR        -->  DB
+PRODR       -->  DB
+PRODIMGR    -->  DB
+
+' Service externo
+CLOUDS      -->  CDN
+
+' ── Notas ──────────────────────────────────────────────────────
+note right of JF
+  Intercepta toda request entrante.
+  Extrae y valida el JWT con JwtUtil.
+  Popula el SecurityContext de Spring.
+end note
+
+note right of GEH
+  Manejo centralizado de errores.
+  Convierte ArtelierException y otras
+  excepciones en ApiResponse<error>.
+end note
+
+note right of CATM
+  Mappers auto-generados por MapStruct
+  en tiempo de compilación.
+  No instanciados manualmente.
+end note
+
+note bottom of DB
+  Schema gestionado con Flyway.
+  V1: users + refresh_tokens
+  V2: categories
+  V3: products
+  V4: product_images
+end note
+
+note bottom of CDN
+  Almacenamiento de imágenes de productos.
+  CloudinaryService gestiona upload
+  y retorna URL + public_id.
+end note
+
+@enduml

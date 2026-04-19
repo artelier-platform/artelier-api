@@ -3,6 +3,7 @@ package com.artelier.api.exception;
 import com.artelier.api.dto.response.ApiResponse;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.util.StringUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -55,5 +56,19 @@ public class GlobalExceptionHandler {
         log.error("Unhandled exception", ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponse.error("Something went wrong"));
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiResponse<Void>> handleUnreadableBody(
+            HttpMessageNotReadableException ex) {
+        log.error("JSON parsing error", ex);
+        String errorMessage = "Invalid request body. Please check JSON format.";
+        ex.getMostSpecificCause();
+        if (ex.getMostSpecificCause().getMessage() != null) {
+            log.debug("Detailed cause: {}",
+                    ex.getMostSpecificCause().getMessage());
+        }
+        return ResponseEntity.badRequest()
+                .body(ApiResponse.error(errorMessage));
     }
 }
