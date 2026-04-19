@@ -59,8 +59,31 @@
 		<url>https://github.com/artelier-platform/artelier-api</url>
 		<tag>HEAD</tag>
 	</scm>
+
 	<properties>
 		<java.version>21</java.version>
+		<sonar.projectKey>artelier-platform_artelier-api</sonar.projectKey>
+		<sonar.projectName>Artelier API</sonar.projectName>
+		<sonar.organization>artelier-platform</sonar.organization>
+		<sonar.host.url>https://sonarcloud.io</sonar.host.url>
+		<sonar.coverage.jacoco.xmlReportPaths>
+			${project.build.directory}/site/jacoco/jacoco.xml
+		</sonar.coverage.jacoco.xmlReportPaths>
+		<sonar.java.source>21</sonar.java.source>
+		<sonar.exclusions>
+			**/dto/**,
+			**/entity/**,
+			**/config/**,
+			**/exception/ArtelierException.java,
+			**/*Application.java
+		</sonar.exclusions>
+		<sonar.coverage.exclusions>
+			**/dto/**,
+			**/entity/**,
+			**/config/**,
+			**/mapper/**,
+			**/*Application.java
+		</sonar.coverage.exclusions>
 	</properties>
 
 	<dependencies>
@@ -123,9 +146,20 @@
 			<artifactId>spring-boot-starter-actuator-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-cache-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.security</groupId>
+			<artifactId>spring-security-test</artifactId>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
@@ -191,6 +225,11 @@
 		</dependency>
 
 		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-databind</artifactId>
+		</dependency>
+
+		<dependency>
 			<groupId>me.paulschwarz</groupId>
 			<artifactId>springboot3-dotenv</artifactId>
 			<version>5.0.1</version>
@@ -202,6 +241,11 @@
 	<build>
 		<plugins>
 			<plugin>
+				<groupId>org.sonarsource.scanner.maven</groupId>
+				<artifactId>sonar-maven-plugin</artifactId>
+				<version>5.0.0.4389</version>
+			</plugin>
+			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 				<configuration>
@@ -210,6 +254,43 @@
 							<groupId>org.projectlombok</groupId>
 							<artifactId>lombok</artifactId>
 						</exclude>
+					</excludes>
+				</configuration>
+			</plugin>
+
+			<plugin>
+				<groupId>org.jacoco</groupId>
+				<artifactId>jacoco-maven-plugin</artifactId>
+				<version>0.8.14</version>
+				<executions>
+					<execution>
+						<goals>
+							<goal>prepare-agent</goal>
+						</goals>
+					</execution>
+
+					<execution>
+						<id>report</id>
+						<phase>test</phase>
+						<goals>
+							<goal>report</goal>
+						</goals>
+					</execution>
+				</executions>
+				<configuration>
+					<formats>
+						<format>XML</format>
+						<format>HTML</format>
+					</formats>
+					<excludes>
+						<exclude>**/config/**</exclude>
+						<exclude>**/security/**</exclude>
+						<exclude>**/mapper/**</exclude>
+						<exclude>**/dto/**</exclude>
+						<exclude>**/entity/**</exclude>
+						<exclude>**/exception/**</exclude>
+						<exclude>**/repository/**</exclude>
+						<exclude>**/ArtelierApiApplication*</exclude>
 					</excludes>
 				</configuration>
 			</plugin>

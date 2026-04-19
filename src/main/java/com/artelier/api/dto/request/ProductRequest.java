@@ -38,7 +38,7 @@ public class ProductRequest {
     @DecimalMin(value = "0.0", inclusive = false)
     private BigDecimal price;
 
-    @Schema(example = "FINITE")
+    @Schema(example = "AVAILABLE")
     @NotNull
     private StockType stockType;
 
