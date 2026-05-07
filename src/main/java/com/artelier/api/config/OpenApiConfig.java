@@ -19,13 +19,18 @@ import org.springframework.context.annotation.Configuration;
                 description = """
                         Artelier API is a REST backend for an e-commerce platform focused on handmade and artisanal products.
 
-                        Features:
+                        **Features:**
                         • JWT authentication and role-based authorization (ADMIN / BUYER)
                         • Product catalog with categories and images
                         • Cloudinary image management
                         • Order system with stock validation
                         • Admin operations for catalog and users
-                        • Payment integration (Wompi - future sprint)
+                        • Payment integration via **Wompi** gateway (webhook + signature validation)
+
+                        **Authentication:**
+                        Most endpoints require a Bearer JWT token in the `Authorization` header.
+                        The only public exception is `POST /api/v1/payments/webhook`, which is
+                        secured via Wompi event signature validation (SHA-256 checksum).
 
                         Architecture follows a modular Spring Boot design based on sprint-driven development.
                         """,
@@ -43,20 +48,15 @@ import org.springframework.context.annotation.Configuration;
         ),
 
         servers = {
-
                 @Server(
                         description = "Local Development",
                         url = "http://localhost:8080"
                 )
-
-                // Future production server (enable when deployed)
-                /*
-                ,
-                @Server(
-                        description = "Production",
-                        url = "https://api.artelier.com"
-                )
-                */
+                // ,
+                // @Server(
+                //         description = "Production",
+                //         url = "https://api.artelier.com"
+                // )
         },
 
         security = {
@@ -68,7 +68,6 @@ import org.springframework.context.annotation.Configuration;
                 url = "https://github.com/artelier-platform/artelier-api"
         )
 )
-
 @SecurityScheme(
         name = "bearerAuth",
         type = SecuritySchemeType.HTTP,
@@ -78,11 +77,13 @@ import org.springframework.context.annotation.Configuration;
         description = """
                 JWT Authorization using Bearer token.
 
-                Format:
-                Authorization: Bearer <token>
+                **Format:**
+                `Authorization: Bearer <token>`
 
-                Example:
-                Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                **Example:**
+                `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...`
+
+                Obtain a token via `POST /api/v1/auth/login`.
                 """
 )
 public class OpenApiConfig {
