@@ -1,0 +1,20 @@
+target/
+.git/
+.gitignore
+.gitattributes
+
+# env files — never in the image
+.env
+.env.local
+.env.prod
+application-prod.properties
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# docs
+docs/
+readme.md
+HELP.md

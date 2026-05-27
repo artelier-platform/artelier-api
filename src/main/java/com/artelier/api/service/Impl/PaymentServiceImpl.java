@@ -79,9 +79,11 @@ public class PaymentServiceImpl implements PaymentService {
                     Order order = orderRepository.findById(orderId)
                             .orElseThrow(() -> new OrderNotFoundException(orderId));
 
-                    if (order.getStatus() != OrderStatus.PROCESSING) {
+                    if (order.getStatus() != OrderStatus.PENDING_PAYMENT) {
                         throw new InvalidOrderStateException(order.getStatus());
                     }
+
+                    orderService.updateOrderStatus(order.getId(), OrderStatus.PROCESSING);
 
                     Payment payment = Payment.builder()
                             .order(order)
