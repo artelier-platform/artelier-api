@@ -7,6 +7,7 @@ import com.artelier.api.entity.OrderItem;
 import com.artelier.api.entity.Product;
 import com.artelier.api.entity.User;
 import com.artelier.api.entity.enums.OrderStatus;
+import com.artelier.api.entity.enums.StockType;
 import com.artelier.api.exception.ArtelierException;
 import com.artelier.api.mapper.OrderMapper;
 import com.artelier.api.repository.OrderRepository;
@@ -31,7 +32,6 @@ public class OrderServiceImpl implements OrderService {
     private final UserRepository userRepository;
     private final ProductRepository productRepository;
 
-
     @Override
     @Transactional
     public OrderResponse createOrder(OrderRequest request, String userEmail) {
@@ -48,11 +48,22 @@ public class OrderServiceImpl implements OrderService {
 
         BigDecimal subtotal = BigDecimal.ZERO;
 
-        for (OrderRequest.OrderItemRequest itemRequest : request.getItems()){
-            Product product = productRepository.findById(itemRequest.getProductId()).
-                    orElseThrow(() -> ArtelierException.notFound("Product not found"));
+        for (OrderRequest.OrderItemRequest itemRequest : request.getItems()) {
+            Product product = productRepository.findById(itemRequest.getProductId())
+                    .orElseThrow(() -> ArtelierException.notFound("Product not found"));
 
             if (!product.getIsActive()) throw ArtelierException.badRequest("Product is not available");
+
+            if (product.getStockType() != StockType.UNLIMITED) {
+                int available = product.getStockQuantity() != null ? product.getStockQuantity() : 0;
+                if (available < itemRequest.getQuantity()) {
+                    throw ArtelierException.badRequest(
+                            "Insufficient stock for product: " + product.getName()
+                                    + " (available: " + available + ")"
+                    );
+                }
+                product.setStockQuantity(available - itemRequest.getQuantity());
+            }
 
             BigDecimal unitPrice = product.getPrice();
             BigDecimal itemTotal = unitPrice.multiply(BigDecimal.valueOf(itemRequest.getQuantity()));
