@@ -187,7 +187,9 @@ class ProductServiceTest {
 
         service.deleteProduct(id);
 
-        verify(productRepository).delete(product);
+        assertNotNull(product.getDeletedAt());
+
+        verify(productRepository).save(product);
     }
 
     @Test

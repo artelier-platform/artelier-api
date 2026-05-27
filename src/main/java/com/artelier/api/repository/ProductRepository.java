@@ -19,4 +19,5 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
 
     boolean existsBySlug(String slug);
 
+    long countByIsActiveTrue();
 }
