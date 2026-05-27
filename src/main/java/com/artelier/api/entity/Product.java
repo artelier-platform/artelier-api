@@ -4,6 +4,7 @@ import com.artelier.api.dto.request.ProductRequest;
 import com.artelier.api.entity.enums.StockType;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -17,6 +18,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@SQLRestriction("deleted_at IS NULL")
 public class Product {
 
     @Id
@@ -67,11 +69,18 @@ public class Product {
         }
     }
 
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
+
     @Builder.Default
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ProductImage> images = new ArrayList<>();
+
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<OrderItem> orderItems;
+
 
     public static Product create(
             ProductRequest request,

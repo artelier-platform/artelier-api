@@ -18,6 +18,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -100,7 +101,8 @@ public class ProductServiceImpl implements ProductService {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> ArtelierException.notFound("Product not found"));
 
-        productRepository.delete(product);
+        product.setDeletedAt(Instant.now());
+        productRepository.save(product);
     }
 
     @CacheEvict(value = "products", allEntries = true)
