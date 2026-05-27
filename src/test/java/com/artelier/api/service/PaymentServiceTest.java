@@ -154,7 +154,7 @@ class PaymentServiceTest {
     @Test
     void shouldCreatePendingPayment() {
         UUID orderId = UUID.randomUUID();
-        Order order = buildOrder(orderId, OrderStatus.PROCESSING);
+        Order order = buildOrder(orderId, OrderStatus.PENDING_PAYMENT);
         Payment saved = new Payment();
         PaymentResponse response = new PaymentResponse();
 

@@ -4,6 +4,7 @@ import com.artelier.api.dto.request.OrderRequest;
 import com.artelier.api.dto.response.OrderResponse;
 import com.artelier.api.entity.*;
 import com.artelier.api.entity.enums.OrderStatus;
+import com.artelier.api.entity.enums.StockType;
 import com.artelier.api.exception.ArtelierException;
 import com.artelier.api.mapper.OrderMapper;
 import com.artelier.api.repository.OrderRepository;
@@ -44,6 +45,8 @@ class OrderServiceTest {
         product.setId(UUID.randomUUID());
         product.setIsActive(true);
         product.setPrice(BigDecimal.valueOf(100));
+        product.setStockType(StockType.AVAILABLE);
+        product.setStockQuantity(10);
 
         OrderRequest.OrderItemRequest itemRequest = new OrderRequest.OrderItemRequest();
         itemRequest.setProductId(product.getId());
