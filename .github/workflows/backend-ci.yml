@@ -1,0 +1,60 @@
+name: Backend CI/CD
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+
+      - name: Cache SonarCloud packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+
+      - name: Run tests
+        run: mvn clean verify
+
+      - name: SonarCloud analysis
+        run: mvn sonar:sonar
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      - name: Build jar
+        run: mvn package -DskipTests
+
+      - name: Deploy to Render
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          curl -s "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" \
+               -X POST \
+               --fail \
+               -o /dev/null
