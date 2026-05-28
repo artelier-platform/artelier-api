@@ -117,12 +117,12 @@ com.artelier.api
 
 <p align="center">
 
-<img src="https://sonarcloud.io/api/project_badges/measure?project=MimiRandomS_artelier-api&metric=alert_status" alt="Quality Gate"/>
-<img src="https://sonarcloud.io/api/project_badges/measure?project=MimiRandomS_artelier-api&metric=coverage" alt="Coverage"/>
-<img src="https://sonarcloud.io/api/project_badges/measure?project=MimiRandomS_artelier-api&metric=bugs" alt="Bugs"/>
-<img src="https://sonarcloud.io/api/project_badges/measure?project=MimiRandomS_artelier-api&metric=vulnerabilities" alt="Vulnerabilities"/>
-<img src="https://sonarcloud.io/api/project_badges/measure?project=MimiRandomS_artelier-api&metric=code_smells" alt="Code Smells"/>
-<img src="https://sonarcloud.io/api/project_badges/measure?project=MimiRandomS_artelier-api&metric=duplicated_lines_density" alt="Duplications"/>
+<img src="https://sonarcloud.io/api/project_badges/measure?project=artelier-platform_artelier-api&metric=alert_status" alt="Quality Gate"/>
+<img src="https://sonarcloud.io/api/project_badges/measure?project=artelier-platform_artelier-api&metric=coverage" alt="Coverage"/>
+<img src="https://sonarcloud.io/api/project_badges/measure?project=artelier-platform_artelier-api&metric=bugs" alt="Bugs"/>
+<img src="https://sonarcloud.io/api/project_badges/measure?project=artelier-platform_artelier-api&metric=vulnerabilities" alt="Vulnerabilities"/>
+<img src="https://sonarcloud.io/api/project_badges/measure?project=artelier-platform_artelier-api&metric=code_smells" alt="Code Smells"/>
+<img src="https://sonarcloud.io/api/project_badges/measure?project=artelier-platform_artelier-api&metric=duplicated_lines_density" alt="Duplications"/>
 
 </p>
 

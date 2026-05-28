@@ -1,7 +1,7 @@
 package com.artelier.api.service;
 
 import com.artelier.api.dto.request.PaymentWebhookRequest;
-import com.artelier.api.service.Impl.WompiSignatureValidatorImpl;
+import com.artelier.api.service.impl.WompiSignatureValidatorImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
