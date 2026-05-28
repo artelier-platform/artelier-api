@@ -1,6 +1,6 @@
 package com.artelier.api.service;
 
-import com.artelier.api.service.Impl.CloudinaryServiceImpl;
+import com.artelier.api.service.impl.CloudinaryServiceImpl;
 import com.cloudinary.Cloudinary;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.multipart.MultipartFile;

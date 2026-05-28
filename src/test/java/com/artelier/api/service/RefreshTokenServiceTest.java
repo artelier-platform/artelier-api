@@ -4,7 +4,7 @@ import com.artelier.api.entity.RefreshToken;
 import com.artelier.api.entity.User;
 import com.artelier.api.exception.ArtelierException;
 import com.artelier.api.repository.RefreshTokenRepository;
-import com.artelier.api.service.Impl.RefreshTokenServiceImpl;
+import com.artelier.api.service.impl.RefreshTokenServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;

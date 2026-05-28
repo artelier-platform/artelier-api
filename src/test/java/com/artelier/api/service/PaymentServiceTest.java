@@ -13,7 +13,7 @@ import com.artelier.api.exception.PaymentNotFoundException;
 import com.artelier.api.mapper.PaymentMapper;
 import com.artelier.api.repository.OrderRepository;
 import com.artelier.api.repository.PaymentRepository;
-import com.artelier.api.service.Impl.PaymentServiceImpl;
+import com.artelier.api.service.impl.PaymentServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;

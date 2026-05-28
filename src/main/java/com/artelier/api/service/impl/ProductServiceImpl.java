@@ -1,4 +1,4 @@
-package com.artelier.api.service.Impl;
+package com.artelier.api.service.impl;
 
 import com.artelier.api.dto.request.ProductRequest;
 import com.artelier.api.dto.response.ProductResponse;
@@ -26,6 +26,8 @@ import java.util.UUID;
 @Service
 public class ProductServiceImpl implements ProductService {
 
+    private final String PRODUCT_NOT_FOUND = "Product not found";
+    private final String CATEGORY_NOT_FOUND = "Product not found";
     private final CategoryRepository categoryRepository;
     private final ProductRepository productRepository;
     private final ProductMapper productMapper;
@@ -48,7 +50,7 @@ public class ProductServiceImpl implements ProductService {
     @Override
     public ProductResponse getBySlug(String slug) {
         Product product = productRepository.findBySlug(slug)
-                .orElseThrow(() -> ArtelierException.notFound("Product not found"));
+                .orElseThrow(() -> ArtelierException.notFound(PRODUCT_NOT_FOUND));
 
         return productMapper.toResponse(product);
     }
@@ -58,7 +60,7 @@ public class ProductServiceImpl implements ProductService {
     @Override
     public ProductResponse createProduct(ProductRequest request) {
         Category category = categoryRepository.findById(request.getCategoryId())
-                .orElseThrow(() -> ArtelierException.notFound("Category not found"));
+                .orElseThrow(() -> ArtelierException.notFound(CATEGORY_NOT_FOUND));
 
         Product product = Product.create(request, category, generateSlug(request.getName()));
 
@@ -72,10 +74,10 @@ public class ProductServiceImpl implements ProductService {
     @Override
     public ProductResponse updateProduct(UUID productId, ProductRequest request) {
         Product product = productRepository.findById(productId)
-                .orElseThrow(() -> ArtelierException.notFound("Product not found"));
+                .orElseThrow(() -> ArtelierException.notFound(PRODUCT_NOT_FOUND));
 
         Category category = categoryRepository.findById(request.getCategoryId())
-                .orElseThrow(() -> ArtelierException.notFound("Category not found"));
+                .orElseThrow(() -> ArtelierException.notFound(CATEGORY_NOT_FOUND));
 
         product.setName(request.getName());
         product.setSlug(generateSlug(request.getName()));
@@ -99,7 +101,7 @@ public class ProductServiceImpl implements ProductService {
     @Override
     public void deleteProduct(UUID productId) {
         Product product = productRepository.findById(productId)
-                .orElseThrow(() -> ArtelierException.notFound("Product not found"));
+                .orElseThrow(() -> ArtelierException.notFound(PRODUCT_NOT_FOUND));
 
         product.setDeletedAt(Instant.now());
         productRepository.save(product);
@@ -110,7 +112,7 @@ public class ProductServiceImpl implements ProductService {
     @Override
     public ProductResponse toggleActive(UUID productId) {
         Product product = productRepository.findById(productId)
-                .orElseThrow(() -> ArtelierException.notFound("Product not found"));
+                .orElseThrow(() -> ArtelierException.notFound(PRODUCT_NOT_FOUND));
 
         product.setIsActive(!product.getIsActive());
 
