@@ -3,7 +3,7 @@ package com.artelier.api.service;
 import com.artelier.api.entity.User;
 import com.artelier.api.exception.ArtelierException;
 import com.artelier.api.repository.UserRepository;
-import com.artelier.api.service.Impl.AdminServiceImpl;
+import com.artelier.api.service.impl.AdminServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.*;

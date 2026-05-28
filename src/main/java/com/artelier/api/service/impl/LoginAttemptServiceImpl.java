@@ -1,4 +1,4 @@
-package com.artelier.api.service.Impl;
+package com.artelier.api.service.impl;
 import org.springframework.stereotype.Service;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;

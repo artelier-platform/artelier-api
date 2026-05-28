@@ -8,7 +8,7 @@ import com.artelier.api.exception.ArtelierException;
 import com.artelier.api.mapper.ProductMapper;
 import com.artelier.api.repository.CategoryRepository;
 import com.artelier.api.repository.ProductRepository;
-import com.artelier.api.service.Impl.ProductServiceImpl;
+import com.artelier.api.service.impl.ProductServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;

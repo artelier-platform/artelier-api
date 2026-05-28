@@ -4,6 +4,7 @@ import com.artelier.api.dto.request.OrderRequest;
 import com.artelier.api.dto.response.ApiResponse;
 import com.artelier.api.dto.response.OrderResponse;
 import com.artelier.api.entity.enums.OrderStatus;
+import com.artelier.api.exception.ArtelierException;
 import com.artelier.api.security.JwtUtil;
 import com.artelier.api.service.OrderService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -186,7 +187,7 @@ public class OrderController {
 
     private String extractToken(String authHeader) {
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            throw new RuntimeException("Invalid Authorization header");
+            throw ArtelierException.unauthorized("Invalid Authorization header");
         }
         return authHeader.substring(7);
     }

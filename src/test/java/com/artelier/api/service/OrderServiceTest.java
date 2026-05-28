@@ -10,7 +10,7 @@ import com.artelier.api.mapper.OrderMapper;
 import com.artelier.api.repository.OrderRepository;
 import com.artelier.api.repository.ProductRepository;
 import com.artelier.api.repository.UserRepository;
-import com.artelier.api.service.Impl.OrderServiceImpl;
+import com.artelier.api.service.impl.OrderServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;

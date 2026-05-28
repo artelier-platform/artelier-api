@@ -6,7 +6,7 @@ import com.artelier.api.entity.enums.OrderStatus;
 import com.artelier.api.repository.OrderItemRepository;
 import com.artelier.api.repository.OrderRepository;
 import com.artelier.api.repository.ProductRepository;
-import com.artelier.api.service.Impl.StatsServiceImpl;
+import com.artelier.api.service.impl.StatsServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;

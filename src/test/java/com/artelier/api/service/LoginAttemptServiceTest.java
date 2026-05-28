@@ -1,6 +1,6 @@
 package com.artelier.api.service;
 
-import com.artelier.api.service.Impl.LoginAttemptServiceImpl;
+import com.artelier.api.service.impl.LoginAttemptServiceImpl;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;

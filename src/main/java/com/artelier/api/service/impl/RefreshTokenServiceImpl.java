@@ -1,4 +1,4 @@
-package com.artelier.api.service.Impl;
+package com.artelier.api.service.impl;
 
 import com.artelier.api.entity.RefreshToken;
 import com.artelier.api.entity.User;

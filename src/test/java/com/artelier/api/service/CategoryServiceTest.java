@@ -6,7 +6,7 @@ import com.artelier.api.entity.Category;
 import com.artelier.api.exception.ArtelierException;
 import com.artelier.api.mapper.CategoryMapper;
 import com.artelier.api.repository.CategoryRepository;
-import com.artelier.api.service.Impl.CategoryServiceImpl;
+import com.artelier.api.service.impl.CategoryServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
