@@ -1,6 +1,6 @@
-package com.artelier.api.service.impl;
+package com.artelier.api.integration.cloudinary.service.impl;
 
-import com.artelier.api.service.CloudinaryService;
+import com.artelier.api.integration.cloudinary.service.CloudinaryService;
 import com.cloudinary.Cloudinary;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;

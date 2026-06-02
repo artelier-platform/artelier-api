@@ -1,4 +1,4 @@
-package com.artelier.api.config;
+package com.artelier.api.integration.cloudinary.config;
 
 import com.cloudinary.Cloudinary;
 import org.springframework.beans.factory.annotation.Value;

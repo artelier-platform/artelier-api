@@ -1,6 +1,6 @@
 package com.artelier.api.entity;
 
-import com.artelier.api.entity.enums.Role;
+import com.artelier.api.enums.Role;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;

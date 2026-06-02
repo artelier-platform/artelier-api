@@ -1,9 +1,11 @@
 package com.artelier.api.controller;
 
-import com.artelier.api.dto.request.PaymentWebhookRequest;
+import com.artelier.api.dto.request.PaymentRequest;
+import com.artelier.api.integration.wompi.dto.request.PaymentWebhookRequest;
 import com.artelier.api.dto.response.PaymentResponse;
+import com.artelier.api.integration.wompi.dto.response.WompiFinancialInstitutionsResponse;
 import com.artelier.api.service.PaymentService;
-import com.artelier.api.service.WompiSignatureValidator;
+import com.artelier.api.integration.wompi.service.WompiSignatureValidator;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -13,12 +15,15 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -181,15 +186,13 @@ public class PaymentController {
             )
     })
     public ResponseEntity<PaymentResponse> createPayment(
-            @Parameter(
-                    description = "UUID of the order to create the payment for",
-                    example = "550e8400-e29b-41d4-a716-446655440000",
-                    required = true
-            )
-            @PathVariable UUID orderId
+            @PathVariable UUID orderId,
+            @Valid @RequestBody PaymentRequest request,
+            HttpServletRequest httpRequest          // ← agregar
     ) {
+        String clientIp = extractClientIp(httpRequest);  // ← agregar
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(paymentService.createPendingPayment(orderId));
+                .body(paymentService.createPendingPayment(orderId, request, clientIp)); // ← pasar ip
     }
 
     @GetMapping("/orders/{orderId}")
@@ -281,5 +284,35 @@ public class PaymentController {
             @PathVariable UUID orderId
     ) {
         return ResponseEntity.ok(paymentService.findByOrderId(orderId));
+    }
+
+    @GetMapping("/financial-institutions")
+    @Operation(
+            summary = "List PSE financial institutions",
+            description = """
+    Returns the list of banks available for PSE payments.
+    
+    The `financial_institution_code` from this response must be sent
+    in the `PsePaymentMethod.financialInstitutionCode` field when creating a PSE payment.
+    
+    Call this endpoint **before** showing the PSE payment form to the customer.
+    """
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Financial institutions retrieved successfully"
+            )
+    })
+    public ResponseEntity<List<WompiFinancialInstitutionsResponse>> getFinancialInstitutions() {
+        return ResponseEntity.ok(paymentService.getFinancialInstitutions());
+    }
+
+    private String extractClientIp(HttpServletRequest request) {
+        String forwarded = request.getHeader("X-Forwarded-For");
+        if (forwarded != null && !forwarded.isBlank()) {
+            return forwarded.split(",")[0].trim();
+        }
+        return request.getRemoteAddr();
     }
 }

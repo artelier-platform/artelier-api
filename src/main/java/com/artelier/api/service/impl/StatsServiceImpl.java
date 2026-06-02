@@ -2,7 +2,7 @@ package com.artelier.api.service.impl;
 
 import com.artelier.api.dto.projection.TopProductProjection;
 import com.artelier.api.dto.response.StatsResponse;
-import com.artelier.api.entity.enums.OrderStatus;
+import com.artelier.api.enums.OrderStatus;
 import com.artelier.api.repository.OrderItemRepository;
 import com.artelier.api.repository.OrderRepository;
 import com.artelier.api.repository.ProductRepository;

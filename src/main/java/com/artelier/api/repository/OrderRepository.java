@@ -1,7 +1,7 @@
 package com.artelier.api.repository;
 
 import com.artelier.api.entity.Order;
-import com.artelier.api.entity.enums.OrderStatus;
+import com.artelier.api.enums.OrderStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;

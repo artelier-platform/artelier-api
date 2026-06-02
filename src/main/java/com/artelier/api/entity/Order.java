@@ -1,7 +1,9 @@
 package com.artelier.api.entity;
 
-import com.artelier.api.entity.enums.OrderStatus;
+import com.artelier.api.enums.OrderStatus;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
 import java.math.BigDecimal;
@@ -29,6 +31,11 @@ public class Order {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private OrderStatus status;
+
+    @Email(message = "Invalid email format")
+    @NotBlank(message = "Customer email is required")
+    @Column(nullable = false)
+    private String customerEmail;
 
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal subtotal;

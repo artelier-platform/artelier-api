@@ -1,4 +1,4 @@
-package com.artelier.api.service;
+package com.artelier.api.integration.cloudinary.service;
 
 import org.springframework.web.multipart.MultipartFile;
 

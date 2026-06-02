@@ -1,6 +1,7 @@
 package com.artelier.api.exception;
 
 import com.artelier.api.dto.response.ApiResponse;
+import com.artelier.api.integration.wompi.exception.WompiException;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -70,5 +71,20 @@ public class GlobalExceptionHandler {
         }
         return ResponseEntity.badRequest()
                 .body(ApiResponse.error(errorMessage));
+    }
+
+    @ExceptionHandler(WompiException.class)
+    public ResponseEntity<ApiResponse<Object>> handleWompiException(
+            WompiException ex) {
+
+        return ResponseEntity.badRequest()
+                .body(new ApiResponse<>(
+                        false,
+                        ex.getMessage(),
+                        Map.of(
+                                "provider", "WOMPI",
+                                "code", ex.getWompiCode()
+                        )
+                ));
     }
 }

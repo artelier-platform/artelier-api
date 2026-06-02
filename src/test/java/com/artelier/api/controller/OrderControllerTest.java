@@ -3,7 +3,7 @@ package com.artelier.api.controller;
 import com.artelier.api.config.JacksonTestConfig;
 import com.artelier.api.dto.request.OrderRequest;
 import com.artelier.api.dto.response.OrderResponse;
-import com.artelier.api.entity.enums.OrderStatus;
+import com.artelier.api.enums.OrderStatus;
 import com.artelier.api.security.JwtUtil;
 import com.artelier.api.service.OrderService;
 import com.fasterxml.jackson.databind.ObjectMapper;

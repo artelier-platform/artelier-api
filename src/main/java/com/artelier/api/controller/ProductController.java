@@ -3,7 +3,7 @@ package com.artelier.api.controller;
 import com.artelier.api.dto.request.ProductRequest;
 import com.artelier.api.dto.response.ApiResponse;
 import com.artelier.api.dto.response.ProductResponse;
-import com.artelier.api.service.CloudinaryService;
+import com.artelier.api.integration.cloudinary.service.CloudinaryService;
 import com.artelier.api.service.ProductService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;

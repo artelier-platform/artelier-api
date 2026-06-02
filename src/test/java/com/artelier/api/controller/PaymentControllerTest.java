@@ -1,14 +1,17 @@
 package com.artelier.api.controller;
 
 import com.artelier.api.config.JacksonTestConfig;
-import com.artelier.api.dto.request.PaymentWebhookRequest;
+import com.artelier.api.dto.request.PaymentRequest;
+import com.artelier.api.integration.wompi.dto.request.CardPaymentMethod;
+import com.artelier.api.integration.wompi.dto.request.PaymentWebhookRequest;
 import com.artelier.api.dto.response.PaymentResponse;
-import com.artelier.api.entity.enums.PaymentStatus;
+import com.artelier.api.integration.wompi.dto.response.WompiFinancialInstitutionsResponse;
+import com.artelier.api.integration.wompi.enums.PaymentStatus;
 import com.artelier.api.exception.OrderNotFoundException;
 import com.artelier.api.exception.PaymentNotFoundException;
 import com.artelier.api.security.JwtUtil;
 import com.artelier.api.service.PaymentService;
-import com.artelier.api.service.WompiSignatureValidator;
+import com.artelier.api.integration.wompi.service.WompiSignatureValidator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,7 +26,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -57,7 +60,8 @@ class PaymentControllerTest {
 
         mockMvc.perform(post("/api/v1/payments/webhook")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(buildWebhookRequest("transaction.updated"))))
+                        .content(objectMapper.writeValueAsString(
+                                buildWebhookRequest("transaction.updated"))))
                 .andExpect(status().isOk());
 
         verify(paymentService).confirmPayment(any());
@@ -69,7 +73,8 @@ class PaymentControllerTest {
 
         mockMvc.perform(post("/api/v1/payments/webhook")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(buildWebhookRequest("transaction.updated"))))
+                        .content(objectMapper.writeValueAsString(
+                                buildWebhookRequest("transaction.updated"))))
                 .andExpect(status().isUnauthorized());
 
         verifyNoInteractions(paymentService);
@@ -81,7 +86,8 @@ class PaymentControllerTest {
 
         mockMvc.perform(post("/api/v1/payments/webhook")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(buildWebhookRequest("transaction.created"))))
+                        .content(objectMapper.writeValueAsString(
+                                buildWebhookRequest("transaction.created"))))
                 .andExpect(status().isOk());
 
         verifyNoInteractions(paymentService);
@@ -94,9 +100,13 @@ class PaymentControllerTest {
         UUID orderId = UUID.randomUUID();
         PaymentResponse response = buildPaymentResponse(orderId, PaymentStatus.PENDING);
 
-        when(paymentService.createPendingPayment(orderId)).thenReturn(response);
+        when(paymentService.createPendingPayment(
+                eq(orderId), any(PaymentRequest.class), anyString()))
+                .thenReturn(response);
 
-        mockMvc.perform(post("/api/v1/payments/orders/" + orderId))
+        mockMvc.perform(post("/api/v1/payments/orders/" + orderId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(buildCardPaymentRequestJson()))   // <-- JSON crudo
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.orderId").value(orderId.toString()))
                 .andExpect(jsonPath("$.status").value("PENDING"));
@@ -106,11 +116,79 @@ class PaymentControllerTest {
     void shouldReturn404WhenOrderNotFoundOnCreate() throws Exception {
         UUID orderId = UUID.randomUUID();
 
-        when(paymentService.createPendingPayment(orderId))
+        when(paymentService.createPendingPayment(
+                eq(orderId), any(PaymentRequest.class), anyString()))
                 .thenThrow(new OrderNotFoundException(orderId));
 
-        mockMvc.perform(post("/api/v1/payments/orders/" + orderId))
+        mockMvc.perform(post("/api/v1/payments/orders/" + orderId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(buildCardPaymentRequestJson()))   // <-- JSON crudo
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldReturn400WhenPaymentRequestBodyIsMissing() throws Exception {
+        UUID orderId = UUID.randomUUID();
+
+        mockMvc.perform(post("/api/v1/payments/orders/" + orderId)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(paymentService);
+    }
+
+    @Test
+    void shouldCreatePendingPaymentWithNequiAndReturn201() throws Exception {
+        UUID orderId = UUID.randomUUID();
+        PaymentResponse response = buildPaymentResponse(orderId, PaymentStatus.PENDING);
+
+        when(paymentService.createPendingPayment(
+                eq(orderId), any(PaymentRequest.class), anyString()))
+                .thenReturn(response);
+
+        mockMvc.perform(post("/api/v1/payments/orders/" + orderId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                        {
+                          "payment_method": {
+                            "type": "NEQUI",
+                            "phone_number": "3107654321"
+                          }
+                        }
+                        """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value("PENDING"));
+    }
+
+    @Test
+    void shouldCreatePendingPaymentWithPseAndReturn201() throws Exception {
+        UUID orderId = UUID.randomUUID();
+        PaymentResponse response = buildPaymentResponse(orderId, PaymentStatus.PENDING);
+
+        when(paymentService.createPendingPayment(
+                eq(orderId), any(PaymentRequest.class), anyString()))
+                .thenReturn(response);
+
+        mockMvc.perform(post("/api/v1/payments/orders/" + orderId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                        {
+                          "payment_method": {
+                            "type": "PSE",
+                            "user_type": 0,
+                            "user_legal_id_type": "CC",
+                            "user_legal_id": "1099888777",
+                            "financial_institution_code": "1007",
+                            "payment_description": "Payment for Artelier order"
+                          },
+                          "customer_data": {
+                            "full_name": "María García",
+                            "phone_number": "+573001112233"
+                          }
+                        }
+                        """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value("PENDING"));
     }
 
     // ─── GET /orders/{orderId} ────────────────────────────────────────────────
@@ -151,7 +229,44 @@ class PaymentControllerTest {
                 .andExpect(status().isNotFound());
     }
 
+    // ─── GET /financial-institutions ─────────────────────────────────────────
+
+    @Test
+    void shouldReturnFinancialInstitutions() throws Exception {
+        WompiFinancialInstitutionsResponse bank = new WompiFinancialInstitutionsResponse();
+        bank.setCode("1007");
+        bank.setName("BANCOLOMBIA");
+
+        when(paymentService.getFinancialInstitutions()).thenReturn(List.of(bank));
+
+        mockMvc.perform(get("/api/v1/payments/financial-institutions"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].financial_institution_code").value("1007"))
+                .andExpect(jsonPath("$[0].financial_institution_name").value("BANCOLOMBIA"));
+    }
+
+    @Test
+    void shouldReturnEmptyListWhenNoInstitutions() throws Exception {
+        when(paymentService.getFinancialInstitutions()).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/v1/payments/financial-institutions"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isEmpty());
+    }
+
     // ─── helpers ─────────────────────────────────────────────────────────────
+
+    private String buildCardPaymentRequestJson() {
+        return """
+        {
+          "payment_method": {
+            "type": "CARD",
+            "token": "tok_test_123456",
+            "installments": 1
+          }
+        }
+        """;
+    }
 
     private PaymentWebhookRequest buildWebhookRequest(String event) {
         PaymentWebhookRequest.Transaction tx = new PaymentWebhookRequest.Transaction();
@@ -163,7 +278,11 @@ class PaymentControllerTest {
 
         PaymentWebhookRequest.SignatureData sig = new PaymentWebhookRequest.SignatureData();
         sig.setChecksum("abc123");
-        sig.setProperties(List.of("transaction.id", "transaction.status", "transaction.amount_in_cents"));
+        sig.setProperties(List.of(
+                "transaction.id",
+                "transaction.status",
+                "transaction.amount_in_cents"
+        ));
 
         PaymentWebhookRequest.TransactionData data = new PaymentWebhookRequest.TransactionData();
         data.setTransaction(tx);

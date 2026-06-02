@@ -1,14 +1,15 @@
-package com.artelier.api.service.impl;
+package com.artelier.api.integration.wompi.service.impl;
 
-import com.artelier.api.dto.request.PaymentWebhookRequest;
-import com.artelier.api.service.WompiSignatureValidator;
+import com.artelier.api.integration.wompi.dto.request.PaymentWebhookRequest;
+import com.artelier.api.integration.wompi.service.WompiSignatureValidator;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.HexFormat;
 
+@Slf4j
 @Component
 public class WompiSignatureValidatorImpl implements WompiSignatureValidator {
 
@@ -40,10 +41,13 @@ public class WompiSignatureValidatorImpl implements WompiSignatureValidator {
 
     private String resolveProperty(PaymentWebhookRequest.Transaction tx, String prop) {
         return switch (prop) {
-            case "transaction.id" -> tx.getId();
-            case "transaction.status" -> tx.getStatus();
+            case "transaction.id"              -> tx.getId();
+            case "transaction.status"          -> tx.getStatus();
             case "transaction.amount_in_cents" -> String.valueOf(tx.getAmountInCents());
-            default -> "";
+            default -> {
+                log.warn("Unknown webhook property '{}' — signature validation will fail", prop);
+                yield "";
+            }
         };
     }
 }

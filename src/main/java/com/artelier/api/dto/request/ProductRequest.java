@@ -1,6 +1,6 @@
 package com.artelier.api.dto.request;
 
-import com.artelier.api.entity.enums.StockType;
+import com.artelier.api.enums.StockType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;

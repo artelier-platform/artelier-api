@@ -1,4 +1,4 @@
-package com.artelier.api.entity.enums;
+package com.artelier.api.enums;
 
 public enum OrderStatus {
     PENDING_PAYMENT,

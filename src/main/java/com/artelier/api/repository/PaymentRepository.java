@@ -10,4 +10,10 @@ import java.util.UUID;
 public interface PaymentRepository extends JpaRepository<Payment, UUID> {
     @Query("SELECT p FROM Payment p JOIN FETCH p.order WHERE p.reference = :reference")
     Optional<Payment> findByReference(String id);
+
+    @Query("SELECT p FROM Payment p WHERE p.order.id = :orderId AND p.status = 'PENDING'")
+    Optional<Payment> findActiveByOrderId(UUID orderId);
+
+    @Query("SELECT p FROM Payment p WHERE p.order.id = :orderId")
+    Optional<Payment> findByOrderId(UUID orderId);
 }
