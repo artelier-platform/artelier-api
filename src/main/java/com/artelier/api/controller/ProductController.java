@@ -1,7 +1,7 @@
 package com.artelier.api.controller;
 
 import com.artelier.api.dto.request.ProductRequest;
-import com.artelier.api.dto.response.ApiResponse;
+import com.artelier.api.dto.response.AppResponse;
 import com.artelier.api.dto.response.ProductResponse;
 import com.artelier.api.integration.cloudinary.service.CloudinaryService;
 import com.artelier.api.service.ProductService;
@@ -20,6 +20,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.UUID;
 
 @AllArgsConstructor
@@ -46,7 +47,7 @@ public class ProductController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500", description = "Internal server error")
     })
     @GetMapping
-    public ResponseEntity<ApiResponse<Page<ProductResponse>>> getAllProducts(
+    public ResponseEntity<AppResponse<Page<ProductResponse>>> getAllProducts(
             @RequestParam(required = false) UUID categoryId,
             Pageable pageable
     ) {
@@ -54,7 +55,7 @@ public class ProductController {
         Page<ProductResponse> data =
                 productService.getAllProducts(categoryId, pageable);
 
-        return ResponseEntity.ok(ApiResponse.success("Products fetched", data));
+        return ResponseEntity.ok(AppResponse.success("Products fetched", data));
     }
 
 
@@ -67,7 +68,7 @@ public class ProductController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "Product not found")
     })
     @GetMapping("/{slug}")
-    public ResponseEntity<ApiResponse<ProductResponse>> getBySlug(
+    public ResponseEntity<AppResponse<ProductResponse>> getBySlug(
 
             @Parameter(
                     description = "Unique product slug",
@@ -77,7 +78,7 @@ public class ProductController {
     ) {
 
         return ResponseEntity.ok(
-                ApiResponse.success("Product fetched", productService.getBySlug(slug))
+                AppResponse.success("Product fetched", productService.getBySlug(slug))
         );
     }
 
@@ -93,21 +94,15 @@ public class ProductController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Unauthorized"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "Forbidden")
     })
-    @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<ProductResponse>> createProduct(
-
-            @io.swagger.v3.oas.annotations.parameters.RequestBody(
-                    description = "Product data",
-                    required = true,
-                    content = @Content(schema = @Schema(implementation = ProductRequest.class))
-            )
-            @Valid
-            @RequestBody ProductRequest request
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<AppResponse<ProductResponse>> createProduct(
+            @RequestPart("data") @Valid ProductRequest request,
+            @RequestPart("images") List<MultipartFile> images
     ) {
-
         return ResponseEntity.ok(
-                ApiResponse.success("Product created", productService.createProduct(request))
+                AppResponse.success("Product created",
+                        productService.createProduct(request, images))
         );
     }
 
@@ -123,7 +118,7 @@ public class ProductController {
     })
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<ProductResponse>> update(
+    public ResponseEntity<AppResponse<ProductResponse>> update(
 
             @Parameter(
                     description = "Product UUID",
@@ -135,7 +130,7 @@ public class ProductController {
             @RequestBody ProductRequest request
     ) {
         return ResponseEntity.ok(
-                ApiResponse.success("Product updated", productService.updateProduct(id, request))
+                AppResponse.success("Product updated", productService.updateProduct(id, request))
         );
     }
 
@@ -150,7 +145,7 @@ public class ProductController {
     })
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<Void>> delete(
+    public ResponseEntity<AppResponse<Void>> delete(
 
             @Parameter(
                     description = "Product UUID",
@@ -159,7 +154,7 @@ public class ProductController {
             @PathVariable UUID id
     ) {
         productService.deleteProduct(id);
-        return ResponseEntity.ok(ApiResponse.success("Product deleted"));
+        return ResponseEntity.ok(AppResponse.success("Product deleted"));
     }
 
 
@@ -170,7 +165,7 @@ public class ProductController {
     @SecurityRequirement(name = "bearerAuth")
     @PatchMapping("/{id}/toggle-active")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<ProductResponse>> toggleActive(
+    public ResponseEntity<AppResponse<ProductResponse>> toggleActive(
 
             @Parameter(
                     description = "Product UUID",
@@ -179,7 +174,7 @@ public class ProductController {
             @PathVariable UUID id
     ) {
         return ResponseEntity.ok(
-                ApiResponse.success("Product updated", productService.toggleActive(id))
+                AppResponse.success("Product updated", productService.toggleActive(id))
         );
     }
 

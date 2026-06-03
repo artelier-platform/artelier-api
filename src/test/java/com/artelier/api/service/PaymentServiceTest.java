@@ -3,7 +3,7 @@ package com.artelier.api.service;
 import com.artelier.api.dto.request.PaymentRequest;
 import com.artelier.api.entity.User;
 import com.artelier.api.integration.wompi.dto.request.CardPaymentMethod;
-import com.artelier.api.integration.wompi.dto.request.PaymentWebhookRequest;
+import com.artelier.api.dto.request.PaymentWebhookRequest;
 import com.artelier.api.integration.wompi.dto.request.WompiAcceptanceTokens;
 import com.artelier.api.integration.wompi.dto.response.WompiTransactionResponse;
 import com.artelier.api.integration.wompi.service.WompiAcceptanceTokenService;
@@ -165,9 +165,9 @@ class PaymentServiceTest {
         when(paymentRepository.findByReference("ref-xyz"))
                 .thenReturn(Optional.empty());
 
+        PaymentWebhookRequest request = buildWebhookRequest("ref-xyz", "APPROVED", "NEQUI");
         assertThrows(PaymentNotFoundException.class,
-                () -> service.confirmPayment(
-                        buildWebhookRequest("ref-xyz", "APPROVED", "NEQUI")));
+                () -> service.confirmPayment(request));
     }
 
     @Test
@@ -177,9 +177,9 @@ class PaymentServiceTest {
         when(paymentRepository.findByReference("ref-123"))
                 .thenReturn(Optional.of(payment));
 
+        PaymentWebhookRequest request = buildWebhookRequest("ref-123", "APPROVED", "NEQUI");
         assertThrows(InvalidOrderStateException.class,
-                () -> service.confirmPayment(
-                        buildWebhookRequest("ref-123", "APPROVED", "NEQUI")));
+                () -> service.confirmPayment(request));
     }
 
     // ─── createPendingPayment ─────────────────────────────────────────────────
@@ -221,7 +221,6 @@ class PaymentServiceTest {
         Payment existing = new Payment();
         PaymentResponse response = new PaymentResponse();
 
-        // findActiveByOrderId — el método correcto
         when(paymentRepository.findActiveByOrderId(orderId))
                 .thenReturn(Optional.of(existing));
         when(paymentMapper.toResponse(existing))
@@ -245,9 +244,9 @@ class PaymentServiceTest {
         when(orderRepository.findById(orderId))
                 .thenReturn(Optional.empty());
 
+        PaymentRequest request = buildCardRequest();
         assertThrows(OrderNotFoundException.class,
-                () -> service.createPendingPayment(
-                        orderId, buildCardRequest(), "192.168.1.1"));
+                () -> service.createPendingPayment(orderId, request, "192.168.1.1"));
     }
 
     @Test
@@ -260,9 +259,9 @@ class PaymentServiceTest {
         when(orderRepository.findById(orderId))
                 .thenReturn(Optional.of(order));
 
+        PaymentRequest request = buildCardRequest();
         assertThrows(InvalidOrderStateException.class,
-                () -> service.createPendingPayment(
-                        orderId, buildCardRequest(), "192.168.1.1"));
+                () -> service.createPendingPayment(orderId, request, "192.168.1.1"));
     }
 
     // ─── findByOrderId ────────────────────────────────────────────────────────
@@ -332,7 +331,6 @@ class PaymentServiceTest {
                 new WompiTransactionResponse.TransactionData();
         txData.setId(txId);
         txData.setStatus("PENDING");
-        // sin paymentMethod.extra → async_payment_url = null (caso CARD/NEQUI)
 
         WompiTransactionResponse response = new WompiTransactionResponse();
         response.setData(txData);

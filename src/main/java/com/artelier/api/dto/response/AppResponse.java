@@ -14,7 +14,7 @@ import lombok.Setter;
         name = "ApiResponse",
         description = "Standard API response wrapper used for all endpoints"
 )
-public class ApiResponse<T> {
+public class AppResponse<T> {
 
     @Schema(
             description = "Indicates whether the request was successful",
@@ -34,15 +34,15 @@ public class ApiResponse<T> {
     )
     private T data;
 
-    public static <T> ApiResponse<T> success(String message, T data) {
-        return new ApiResponse<>(true, message, data);
+    public static <T> AppResponse<T> success(String message, T data) {
+        return new AppResponse<>(true, message, data);
     }
 
-    public static <T> ApiResponse<T> success(String message) {
-        return new ApiResponse<>(true, message, null);
+    public static <T> AppResponse<T> success(String message) {
+        return new AppResponse<>(true, message, null);
     }
 
-    public static <T> ApiResponse<T> error(String message) {
-        return new ApiResponse<>(false, message, null);
+    public static <T> AppResponse<T> error(String message) {
+        return new AppResponse<>(false, message, null);
     }
 }

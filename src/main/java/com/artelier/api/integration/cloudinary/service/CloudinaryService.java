@@ -1,9 +1,9 @@
 package com.artelier.api.integration.cloudinary.service;
 
+import com.artelier.api.integration.cloudinary.dto.response.CloudinaryUploadResponse;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.Map;
-
 public interface CloudinaryService {
-    Map<String, Object> upload(MultipartFile file);
+
+    CloudinaryUploadResponse upload(MultipartFile file);
 }

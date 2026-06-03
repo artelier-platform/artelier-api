@@ -2,8 +2,7 @@ package com.artelier.api.controller;
 
 import com.artelier.api.config.JacksonTestConfig;
 import com.artelier.api.dto.request.PaymentRequest;
-import com.artelier.api.integration.wompi.dto.request.CardPaymentMethod;
-import com.artelier.api.integration.wompi.dto.request.PaymentWebhookRequest;
+import com.artelier.api.dto.request.PaymentWebhookRequest;
 import com.artelier.api.dto.response.PaymentResponse;
 import com.artelier.api.integration.wompi.dto.response.WompiFinancialInstitutionsResponse;
 import com.artelier.api.integration.wompi.enums.PaymentStatus;

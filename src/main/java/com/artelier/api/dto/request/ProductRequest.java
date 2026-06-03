@@ -55,5 +55,5 @@ public class ProductRequest {
     private Boolean isActive;
 
     @Valid
-    private List<ProductImageRequest> images;
+    private List<ImageMetadata> images;
 }

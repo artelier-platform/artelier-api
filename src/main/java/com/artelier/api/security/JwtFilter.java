@@ -1,4 +1,6 @@
 package com.artelier.api.security;
+import com.artelier.api.entity.User;
+import com.artelier.api.repository.UserRepository;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import lombok.AllArgsConstructor;
@@ -11,12 +13,12 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.List;
-
 @AllArgsConstructor
 @Component
 public class JwtFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
+    private final UserRepository userRepository;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -32,14 +34,21 @@ public class JwtFilter extends OncePerRequestFilter {
             if (jwtUtil.validateToken(token)) {
                 if (SecurityContextHolder.getContext().getAuthentication() == null) {
 
-                    String username = jwtUtil.extractUsername(token);
-                    String role = jwtUtil.extractRole(token);
+                    String email = jwtUtil.extractUsername(token);
+
+                    User user = userRepository.findByEmail(email).orElse(null);
+                    if (user == null || user.isBanned()) {
+                        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                        return;
+                    }
+
+                    UserPrincipal principal = new UserPrincipal(user);
 
                     UsernamePasswordAuthenticationToken auth =
                             new UsernamePasswordAuthenticationToken(
-                                    username,
+                                    principal,
                                     null,
-                                    List.of(new SimpleGrantedAuthority("ROLE_" + role.trim()))
+                                    principal.getAuthorities()
                             );
 
                     SecurityContextHolder.getContext().setAuthentication(auth);

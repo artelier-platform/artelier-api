@@ -1,6 +1,6 @@
 package com.artelier.api.integration.wompi.service.impl;
 
-import com.artelier.api.integration.wompi.dto.request.PaymentWebhookRequest;
+import com.artelier.api.dto.request.PaymentWebhookRequest;
 import com.artelier.api.integration.wompi.service.WompiSignatureValidator;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;

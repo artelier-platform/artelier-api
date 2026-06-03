@@ -17,6 +17,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Instant;
 import java.util.List;
@@ -27,7 +28,7 @@ import java.util.UUID;
 public class ProductServiceImpl implements ProductService {
 
     private final String PRODUCT_NOT_FOUND = "Product not found";
-    private final String CATEGORY_NOT_FOUND = "Product not found";
+    private final String CATEGORY_NOT_FOUND = "Category not found";
     private final CategoryRepository categoryRepository;
     private final ProductRepository productRepository;
     private final ProductMapper productMapper;
@@ -58,7 +59,7 @@ public class ProductServiceImpl implements ProductService {
     @CacheEvict(value = "products", allEntries = true)
     @Transactional
     @Override
-    public ProductResponse createProduct(ProductRequest request) {
+    public ProductResponse createProduct(ProductRequest request, List<MultipartFile> images)  {
         Category category = categoryRepository.findById(request.getCategoryId())
                 .orElseThrow(() -> ArtelierException.notFound(CATEGORY_NOT_FOUND));
 

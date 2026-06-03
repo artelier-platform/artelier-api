@@ -1,6 +1,7 @@
 package com.artelier.api.service.impl;
 
 import com.artelier.api.dto.request.PaymentRequest;
+import com.artelier.api.dto.request.PaymentWebhookRequest;
 import com.artelier.api.dto.response.PaymentResponse;
 import com.artelier.api.entity.Order;
 import com.artelier.api.entity.Payment;
@@ -50,7 +51,6 @@ public class PaymentServiceImpl implements PaymentService {
     @Value("${wompi.redirect-url}")
     private String redirectUrl;
 
-    // ─── Create payment ──────────────────────────────────────────────────────
 
     @Override
     @Transactional
@@ -87,9 +87,9 @@ public class PaymentServiceImpl implements PaymentService {
         WompiTransactionResponse wompiResponse = wompiClient.createTransaction(wompiRequest);
         WompiTransactionResponse.TransactionData txData = wompiResponse.getData();
 
-        String redirectUrl = extractRedirectUrl(txData);
+        String wompiRedirectUrl = extractRedirectUrl(txData);
 
-        orderService.updateOrderStatus(orderId, OrderStatus.PROCESSING);
+        orderService.updateOrderStatusInternal(orderId, OrderStatus.PROCESSING);
 
         Payment payment = Payment.builder()
                 .order(order)
@@ -98,7 +98,7 @@ public class PaymentServiceImpl implements PaymentService {
                 .paymentMethod(null)
                 .reference(reference)
                 .wompiTransactionId(txData.getId())
-                .redirectUrl(redirectUrl)
+                .redirectUrl(wompiRedirectUrl)
                 .build();
 
         return paymentMapper.toResponse(paymentRepository.save(payment));
@@ -111,11 +111,10 @@ public class PaymentServiceImpl implements PaymentService {
             String signature,
             String customerEmail,
             PaymentRequest request,
-            String clientIp       // ← nuevo parámetro
+            String clientIp
     ) {
         PaymentMethodBody paymentMethod = request.getPaymentMethod();
 
-        // Para PSE: inyecta el IP real si el frontend no lo mandó
         if (paymentMethod instanceof PsePaymentMethod pse
                 && (pse.getReferenceOne() == null || pse.getReferenceOne().isBlank())) {
             pse.setReferenceOne(clientIp);
@@ -151,8 +150,6 @@ public class PaymentServiceImpl implements PaymentService {
         return txData.getPaymentMethod().getExtra().getAsyncPaymentUrl();
     }
 
-    // ─── Confirm payment (webhook) ────────────────────────────────────────────
-
     @Override
     @Transactional
     public void confirmPayment(PaymentWebhookRequest request) {
@@ -178,29 +175,27 @@ public class PaymentServiceImpl implements PaymentService {
             case "APPROVED" -> {
                 payment.setStatus(PaymentStatus.APPROVED);
                 payment.setPaidAt(Instant.now());
-                orderService.updateOrderStatus(order.getId(), OrderStatus.PAID);
+                orderService.updateOrderStatusInternal(order.getId(), OrderStatus.PAID);
                 log.info("Payment {} APPROVED — order {}", payment.getId(), order.getId());
             }
             case "DECLINED" -> {
                 payment.setStatus(PaymentStatus.DECLINED);
-                orderService.updateOrderStatus(order.getId(), OrderStatus.PENDING_PAYMENT);
+                orderService.updateOrderStatusInternal(order.getId(), OrderStatus.PENDING_PAYMENT);
                 log.info("Payment {} DECLINED — order {}", payment.getId(), order.getId());
             }
             case "VOIDED" -> {
                 payment.setStatus(PaymentStatus.VOIDED);
-                orderService.updateOrderStatus(order.getId(), OrderStatus.PENDING_PAYMENT);
+                orderService.updateOrderStatusInternal(order.getId(), OrderStatus.PENDING_PAYMENT);
             }
             default -> {
                 payment.setStatus(PaymentStatus.ERROR);
-                orderService.updateOrderStatus(order.getId(), OrderStatus.PENDING_PAYMENT);
+                orderService.updateOrderStatusInternal(order.getId(), OrderStatus.PENDING_PAYMENT);
                 log.warn("Payment {} unexpected status={}", payment.getId(), tx.getStatus());
             }
         }
 
         paymentRepository.save(payment);
     }
-
-    // ─── Queries ──────────────────────────────────────────────────────────────
 
     @Override
     @Transactional(readOnly = true)
@@ -214,8 +209,6 @@ public class PaymentServiceImpl implements PaymentService {
     public List<WompiFinancialInstitutionsResponse> getFinancialInstitutions() {
         return wompiClient.getFinancialInstitutions().getData();
     }
-
-    // ─── Helpers ──────────────────────────────────────────────────────────────
 
     private void resolvePaymentMethod(Payment payment, String paymentMethodType) {
         if (paymentMethodType == null) return;
