@@ -52,10 +52,6 @@ class ProductControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    // ─────────────────────────────────────────────
-    // Helpers
-    // ─────────────────────────────────────────────
-
     private ProductRequest buildRequest() {
         ProductRequest request = new ProductRequest();
         request.setCategoryId(UUID.randomUUID());
@@ -82,10 +78,6 @@ class ProductControllerTest {
                 MediaType.IMAGE_JPEG_VALUE, "fake-image-bytes".getBytes()
         );
     }
-
-    // ─────────────────────────────────────────────
-    // GET /products
-    // ─────────────────────────────────────────────
 
     @Test
     void shouldGetAllProductsWithoutFilter() throws Exception {
@@ -115,10 +107,6 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$.data.content[0].name").value("Ceramic Mug"));
     }
 
-    // ─────────────────────────────────────────────
-    // GET /products/{slug}
-    // ─────────────────────────────────────────────
-
     @Test
     void shouldGetProductBySlug() throws Exception {
         ProductResponse product = new ProductResponse();
@@ -132,10 +120,6 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$.message").value("Product retrieved"))
                 .andExpect(jsonPath("$.data.name").value("Slug Product"));
     }
-
-    // ─────────────────────────────────────────────
-    // POST /products — multipart/form-data
-    // ─────────────────────────────────────────────
 
     @Test
     void shouldCreateProductWithImages() throws Exception {
@@ -167,10 +151,6 @@ class ProductControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.name").value("Created Product"));
     }
-
-    // ─────────────────────────────────────────────
-    // PUT /products/{id} — multipart/form-data
-    // ─────────────────────────────────────────────
 
     @Test
     void shouldUpdateProductWithImages() throws Exception {
@@ -207,10 +187,6 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$.data.name").value("Updated Product"));
     }
 
-    // ─────────────────────────────────────────────
-    // DELETE /products/{id}
-    // ─────────────────────────────────────────────
-
     @Test
     void shouldDeleteProduct() throws Exception {
         UUID id = UUID.randomUUID();
@@ -218,10 +194,6 @@ class ProductControllerTest {
         mockMvc.perform(delete("/products/" + id))
                 .andExpect(status().isNoContent());
     }
-
-    // ─────────────────────────────────────────────
-    // PATCH /products/{id}/toggle
-    // ─────────────────────────────────────────────
 
     @Test
     void shouldToggleProductVisibilityToFalse() throws Exception {

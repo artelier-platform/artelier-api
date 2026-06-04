@@ -69,9 +69,6 @@ public class PaymentController {
     private final PaymentService paymentService;
     private final WompiSignatureValidator signatureValidator;
 
-    // ──────────────────────────────────────────────────────────────────────────────
-    // POST /payments/webhook
-    // ──────────────────────────────────────────────────────────────────────────────
     @PostMapping("/webhook")
     @SecurityRequirements
     @Operation(
@@ -204,9 +201,6 @@ public class PaymentController {
         return ResponseEntity.ok().build();
     }
 
-    // ──────────────────────────────────────────────────────────────────────────────
-    // POST /payments/orders/{orderId}
-    // ──────────────────────────────────────────────────────────────────────────────
     @PostMapping("/orders/{orderId}")
     @Operation(
             summary = "Create pending payment for an order",
@@ -356,9 +350,6 @@ public class PaymentController {
                 .body(AppResponse.success("Payment created successfully", payment));
     }
 
-    // ──────────────────────────────────────────────────────────────────────────────
-    // GET /payments/orders/{orderId}
-    // ──────────────────────────────────────────────────────────────────────────────
     @GetMapping("/orders/{orderId}")
     @Operation(
             summary = "Get payment status by order",
@@ -490,9 +481,6 @@ public class PaymentController {
         );
     }
 
-    // ──────────────────────────────────────────────────────────────────────────────
-    // GET /payments/financial-institutions
-    // ──────────────────────────────────────────────────────────────────────────────
     @GetMapping("/financial-institutions")
     @Operation(
             summary = "List available PSE financial institutions",

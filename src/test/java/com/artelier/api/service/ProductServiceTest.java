@@ -40,10 +40,6 @@ class ProductServiceTest {
     @InjectMocks
     private ProductServiceImpl service;
 
-    // ─────────────────────────────────────────────
-    // Helpers
-    // ─────────────────────────────────────────────
-
     private ProductRequest buildRequest(UUID categoryId) {
         ProductRequest request = new ProductRequest();
         request.setCategoryId(categoryId);
@@ -70,10 +66,6 @@ class ProductServiceTest {
         response.setPublicId("artelier/products/abc");
         return response;
     }
-
-    // ─────────────────────────────────────────────
-    // getAllProducts
-    // ─────────────────────────────────────────────
 
     @Test
     void shouldReturnAllProductsWithoutCategoryFilter() {
@@ -106,10 +98,6 @@ class ProductServiceTest {
         verify(productRepository, never()).findAll(pageable);
     }
 
-    // ─────────────────────────────────────────────
-    // getBySlug
-    // ─────────────────────────────────────────────
-
     @Test
     void shouldReturnProductBySlug() {
         Product product = new Product();
@@ -129,10 +117,6 @@ class ProductServiceTest {
 
         assertThrows(ArtelierException.class, () -> service.getBySlug("nonexistent"));
     }
-
-    // ─────────────────────────────────────────────
-    // createProduct
-    // ─────────────────────────────────────────────
 
     @Test
     void shouldCreateProductWithoutImages() {
@@ -233,10 +217,6 @@ class ProductServiceTest {
         assertThrows(ArtelierException.class, () -> service.createProduct(request, null));
     }
 
-    // ─────────────────────────────────────────────
-    // createProduct — slug generation
-    // ─────────────────────────────────────────────
-
     @Test
     void shouldGenerateSlugFromName() {
         UUID categoryId = UUID.randomUUID();
@@ -296,10 +276,6 @@ class ProductServiceTest {
 
         service.createProduct(request, null);
     }
-
-    // ─────────────────────────────────────────────
-    // updateProduct
-    // ─────────────────────────────────────────────
 
     @Test
     void shouldUpdateProductWithoutReplacingImages() {
@@ -378,10 +354,6 @@ class ProductServiceTest {
                 () -> service.updateProduct(productId, request, null));
     }
 
-    // ─────────────────────────────────────────────
-    // deleteProduct
-    // ─────────────────────────────────────────────
-
     @Test
     void shouldSoftDeleteProduct() {
         UUID id = UUID.randomUUID();
@@ -402,10 +374,6 @@ class ProductServiceTest {
         assertThrows(ArtelierException.class,
                 () -> service.deleteProduct(UUID.randomUUID()));
     }
-
-    // ─────────────────────────────────────────────
-    // toggleActive
-    // ─────────────────────────────────────────────
 
     @Test
     void shouldToggleActiveFromTrueToFalse() {
@@ -441,7 +409,8 @@ class ProductServiceTest {
     void shouldThrowIfProductNotFoundOnToggle() {
         when(productRepository.findById(any())).thenReturn(Optional.empty());
 
-        assertThrows(ArtelierException.class,
-                () -> service.toggleActive(UUID.randomUUID()));
+        assertThrows(ArtelierException.class, () -> {
+            service.toggleActive(UUID.randomUUID());
+        });
     }
 }

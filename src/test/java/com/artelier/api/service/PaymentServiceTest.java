@@ -57,8 +57,6 @@ class PaymentServiceTest {
                 "http://localhost:3000/payment/result");
     }
 
-    // ─── confirmPayment ───────────────────────────────────────────────────────
-
     @Test
     void shouldConfirmPaymentAsApproved() {
         Payment payment = buildPayment(PaymentStatus.PENDING, OrderStatus.PROCESSING);
@@ -196,8 +194,6 @@ class PaymentServiceTest {
                 () -> service.confirmPayment(buildWebhookRequest("ref-123", "APPROVED", "NEQUI")));
     }
 
-    // ─── createPendingPayment ─────────────────────────────────────────────────
-
     @Test
     void shouldCreatePendingPayment() {
         UUID orderId = UUID.randomUUID();
@@ -250,8 +246,9 @@ class PaymentServiceTest {
         when(paymentRepository.findActiveByOrderId(orderId)).thenReturn(Optional.empty());
         when(orderRepository.findById(orderId)).thenReturn(Optional.empty());
 
-        assertThrows(OrderNotFoundException.class,
-                () -> service.createPendingPayment(orderId, buildCardRequest(), "192.168.1.1"));
+        assertThrows(OrderNotFoundException.class, () -> {
+            service.createPendingPayment(orderId, buildCardRequest(), "192.168.1.1");
+        });
     }
 
     @Test
@@ -262,11 +259,10 @@ class PaymentServiceTest {
         when(paymentRepository.findActiveByOrderId(orderId)).thenReturn(Optional.empty());
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
 
-        assertThrows(InvalidOrderStateException.class,
-                () -> service.createPendingPayment(orderId, buildCardRequest(), "192.168.1.1"));
+        assertThrows(InvalidOrderStateException.class, () -> {
+            service.createPendingPayment(orderId, buildCardRequest(), "192.168.1.1");
+        });
     }
-
-    // ─── findByOrderId ────────────────────────────────────────────────────────
 
     @Test
     void shouldFindPaymentByOrderId() {
@@ -290,7 +286,6 @@ class PaymentServiceTest {
                 () -> service.findByOrderId(orderId));
     }
 
-    // ─── helpers ─────────────────────────────────────────────────────────────
 
     private Payment buildPayment(PaymentStatus paymentStatus, OrderStatus orderStatus) {
         Payment payment = new Payment();

@@ -74,9 +74,6 @@ public class ProductController {
 
     private final ProductService productService;
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // GET /products — public
-    // ──────────────────────────────────────────────────────────────────────────
     @GetMapping
     @SecurityRequirements
     @Operation(
@@ -172,9 +169,6 @@ public class ProductController {
         );
     }
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // GET /products/{slug} — public
-    // ──────────────────────────────────────────────────────────────────────────
     @GetMapping("/{slug}")
     @SecurityRequirements
     @Operation(
@@ -266,9 +260,6 @@ public class ProductController {
         );
     }
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // POST /products — ADMIN only, multipart/form-data
-    // ──────────────────────────────────────────────────────────────────────────
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(
@@ -454,9 +445,6 @@ public class ProductController {
                 ));
     }
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // PUT /products/{id} — ADMIN only, multipart/form-data
-    // ──────────────────────────────────────────────────────────────────────────
     @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(
@@ -592,9 +580,6 @@ public class ProductController {
         );
     }
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // DELETE /products/{id} — ADMIN only, soft delete
-    // ──────────────────────────────────────────────────────────────────────────
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(
@@ -670,9 +655,6 @@ public class ProductController {
         return ResponseEntity.noContent().build();
     }
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // PATCH /products/{id}/toggle — ADMIN only
-    // ──────────────────────────────────────────────────────────────────────────
     @PatchMapping("/{id}/toggle")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(

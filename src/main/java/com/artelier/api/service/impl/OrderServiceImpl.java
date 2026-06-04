@@ -32,6 +32,7 @@ public class OrderServiceImpl implements OrderService {
     private final OrderMapper orderMapper;
     private final UserRepository userRepository;
     private final ProductRepository productRepository;
+    private final String ORDER_NOT_FOUND = "Order not found";
 
     @Override
     @Transactional
@@ -126,7 +127,7 @@ public class OrderServiceImpl implements OrderService {
     public OrderResponse updateOrderStatus(UUID orderId, OrderStatus newStatus, User requester) {
 
         Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> ArtelierException.notFound("Order not found"));
+                .orElseThrow(() -> ArtelierException.notFound(ORDER_NOT_FOUND));
 
         boolean isAdmin = requester.getRole() == Role.ADMIN;
 
@@ -162,7 +163,7 @@ public class OrderServiceImpl implements OrderService {
     @Transactional
     public void updateOrderStatusInternal(UUID orderId, OrderStatus newStatus) {
         Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> ArtelierException.notFound("Order not found"));
+                .orElseThrow(() -> ArtelierException.notFound(ORDER_NOT_FOUND));
 
         if (order.getStatus() == OrderStatus.CANCELLED) {
             throw ArtelierException.badRequest("Cannot modify a cancelled order");
@@ -176,7 +177,7 @@ public class OrderServiceImpl implements OrderService {
     @Transactional(readOnly = true)
     public OrderResponse getOrderById(UUID orderId, User requester) {
         Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> ArtelierException.notFound("Order not found"));
+                .orElseThrow(() -> ArtelierException.notFound(ORDER_NOT_FOUND));
 
         boolean isAdmin = requester.getRole() == Role.ADMIN;
 

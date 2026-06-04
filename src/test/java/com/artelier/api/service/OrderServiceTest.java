@@ -34,10 +34,6 @@ class OrderServiceTest {
     @InjectMocks
     private OrderServiceImpl service;
 
-    // ─────────────────────────────────────────────
-    // Helpers
-    // ─────────────────────────────────────────────
-
     private User buildUser(Role role) {
         User user = new User();
         user.setId(UUID.randomUUID());
@@ -68,10 +64,6 @@ class OrderServiceTest {
         request.setItems(List.of(item));
         return request;
     }
-
-    // ─────────────────────────────────────────────
-    // createOrder
-    // ─────────────────────────────────────────────
 
     @Test
     void shouldCreateOrderSuccessfully() {
@@ -117,7 +109,6 @@ class OrderServiceTest {
         OrderResponse result = service.createOrder(request, user.getEmail());
 
         assertNotNull(result);
-        // stock quantity untouched for UNLIMITED
         assertEquals(0, product.getStockQuantity());
     }
 
@@ -130,8 +121,9 @@ class OrderServiceTest {
         when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
         when(productRepository.findById(product.getId())).thenReturn(Optional.of(product));
 
-        assertThrows(ArtelierException.class,
-                () -> service.createOrder(request, user.getEmail()));
+        assertThrows(ArtelierException.class, () -> {
+            service.createOrder(request, user.getEmail());
+        });
     }
 
     @Test
@@ -153,8 +145,9 @@ class OrderServiceTest {
         when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
         when(productRepository.findById(any())).thenReturn(Optional.empty());
 
-        assertThrows(ArtelierException.class,
-                () -> service.createOrder(request, user.getEmail()));
+        assertThrows(ArtelierException.class, () -> {
+            service.createOrder(request, user.getEmail());
+        });
     }
 
     @Test
@@ -167,13 +160,10 @@ class OrderServiceTest {
         when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
         when(productRepository.findById(product.getId())).thenReturn(Optional.of(product));
 
-        assertThrows(ArtelierException.class,
-                () -> service.createOrder(request, user.getEmail()));
+        assertThrows(ArtelierException.class, () -> {
+            service.createOrder(request, user.getEmail());
+        });
     }
-
-    // ─────────────────────────────────────────────
-    // getMyOrders
-    // ─────────────────────────────────────────────
 
     @Test
     void shouldReturnMyOrders() {
@@ -201,10 +191,6 @@ class OrderServiceTest {
 
         assertTrue(result.isEmpty());
     }
-
-    // ─────────────────────────────────────────────
-    // getAllOrders — ADMIN paths
-    // ─────────────────────────────────────────────
 
     @Test
     void adminShouldGetAllOrdersWithoutStatusFilter() {
@@ -238,10 +224,6 @@ class OrderServiceTest {
         verify(orderRepository, never()).findAll(pageable);
     }
 
-    // ─────────────────────────────────────────────
-    // getAllOrders — BUYER paths
-    // ─────────────────────────────────────────────
-
     @Test
     void buyerShouldGetOnlyOwnOrdersWithoutStatusFilter() {
         User buyer = buildUser(Role.BUYER);
@@ -273,10 +255,6 @@ class OrderServiceTest {
         assertEquals(1, result.getContent().size());
         verify(orderRepository).findByUserAndStatus(buyer, OrderStatus.PENDING_PAYMENT, pageable);
     }
-
-    // ─────────────────────────────────────────────
-    // updateOrderStatus — ADMIN paths
-    // ─────────────────────────────────────────────
 
     @Test
     void adminShouldShipPaidOrder() {
@@ -321,10 +299,6 @@ class OrderServiceTest {
         assertThrows(ArtelierException.class,
                 () -> service.updateOrderStatus(orderId, OrderStatus.SHIPPED, admin));
     }
-
-    // ─────────────────────────────────────────────
-    // updateOrderStatus — BUYER paths
-    // ─────────────────────────────────────────────
 
     @Test
     void buyerShouldCancelOwnPendingOrder() {
@@ -401,10 +375,6 @@ class OrderServiceTest {
                 () -> service.updateOrderStatus(UUID.randomUUID(), OrderStatus.SHIPPED, admin));
     }
 
-    // ─────────────────────────────────────────────
-    // updateOrderStatusInternal
-    // ─────────────────────────────────────────────
-
     @Test
     void shouldUpdateOrderStatusInternally() {
         UUID orderId = UUID.randomUUID();
@@ -438,10 +408,6 @@ class OrderServiceTest {
         assertThrows(ArtelierException.class,
                 () -> service.updateOrderStatusInternal(UUID.randomUUID(), OrderStatus.PAID));
     }
-
-    // ─────────────────────────────────────────────
-    // getOrderById
-    // ─────────────────────────────────────────────
 
     @Test
     void adminShouldGetAnyOrderById() {
@@ -501,7 +467,8 @@ class OrderServiceTest {
         User admin = buildUser(Role.ADMIN);
         when(orderRepository.findById(any())).thenReturn(Optional.empty());
 
-        assertThrows(ArtelierException.class,
-                () -> service.getOrderById(UUID.randomUUID(), admin));
+        assertThrows(ArtelierException.class, () -> {
+            service.getOrderById(UUID.randomUUID(), admin);
+        });
     }
 }

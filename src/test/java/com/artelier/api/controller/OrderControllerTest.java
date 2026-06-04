@@ -70,10 +70,6 @@ class OrderControllerTest {
         adminUser.setRole(Role.ADMIN);
     }
 
-    // ─────────────────────────────────────────────
-    // Helpers
-    // ─────────────────────────────────────────────
-
     private void authenticateAs(User user) {
         UserPrincipal principal = new UserPrincipal(user);
         UsernamePasswordAuthenticationToken auth =
@@ -94,10 +90,6 @@ class OrderControllerTest {
         return request;
     }
 
-    // ─────────────────────────────────────────────
-    // POST /orders
-    // ─────────────────────────────────────────────
-
     @Test
     void shouldCreateOrder() throws Exception {
         authenticateAs(buyerUser);
@@ -116,10 +108,6 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$.message").value("Order created successfully"))
                 .andExpect(jsonPath("$.data.status").value("PENDING_PAYMENT"));
     }
-
-    // ─────────────────────────────────────────────
-    // GET /orders/my
-    // ─────────────────────────────────────────────
 
     @Test
     void shouldGetMyOrders() throws Exception {
@@ -148,10 +136,6 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$.data").isArray())
                 .andExpect(jsonPath("$.data").isEmpty());
     }
-
-    // ─────────────────────────────────────────────
-    // GET /orders
-    // ─────────────────────────────────────────────
 
     @Test
     void shouldGetAllOrdersWithoutFilter() throws Exception {
@@ -184,10 +168,6 @@ class OrderControllerTest {
                 .andExpect(jsonPath("$.data.content[0].status").value("SHIPPED"));
     }
 
-    // ─────────────────────────────────────────────
-    // PATCH /orders/{id}/status
-    // ─────────────────────────────────────────────
-
     @Test
     void adminShouldUpdateOrderStatusToShipped() throws Exception {
         authenticateAs(adminUser);
@@ -197,7 +177,7 @@ class OrderControllerTest {
                 .status(OrderStatus.SHIPPED)
                 .build();
 
-        when(orderService.updateOrderStatus(eq(orderId), eq(OrderStatus.SHIPPED), eq(adminUser)))
+        when(orderService.updateOrderStatus(orderId, OrderStatus.SHIPPED, adminUser))
                 .thenReturn(response);
 
         mockMvc.perform(patch("/orders/" + orderId + "/status")
@@ -217,7 +197,7 @@ class OrderControllerTest {
                 .status(OrderStatus.CANCELLED)
                 .build();
 
-        when(orderService.updateOrderStatus(eq(orderId), eq(OrderStatus.CANCELLED), eq(buyerUser)))
+        when(orderService.updateOrderStatus(orderId, OrderStatus.CANCELLED, buyerUser))
                 .thenReturn(response);
 
         mockMvc.perform(patch("/orders/" + orderId + "/status")
@@ -225,10 +205,6 @@ class OrderControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.status").value("CANCELLED"));
     }
-
-    // ─────────────────────────────────────────────
-    // GET /orders/{id}
-    // ─────────────────────────────────────────────
 
     @Test
     void shouldGetOrderById() throws Exception {
@@ -239,7 +215,7 @@ class OrderControllerTest {
                 .status(OrderStatus.PAID)
                 .build();
 
-        when(orderService.getOrderById(eq(orderId), eq(adminUser))).thenReturn(response);
+        when(orderService.getOrderById(orderId, adminUser)).thenReturn(response);
 
         mockMvc.perform(get("/orders/" + orderId))
                 .andExpect(status().isOk())
@@ -257,7 +233,7 @@ class OrderControllerTest {
                 .status(OrderStatus.PENDING_PAYMENT)
                 .build();
 
-        when(orderService.getOrderById(eq(orderId), eq(buyerUser))).thenReturn(response);
+        when(orderService.getOrderById(orderId, buyerUser)).thenReturn(response);
 
         mockMvc.perform(get("/orders/" + orderId))
                 .andExpect(status().isOk())

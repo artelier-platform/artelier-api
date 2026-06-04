@@ -22,7 +22,6 @@ class LoginAttemptServiceTest {
 
         String key = "test@example.com";
 
-        // consume 5 tokens
         for (int i = 0; i < 5; i++) {
             service.tryConsume(key);
         }

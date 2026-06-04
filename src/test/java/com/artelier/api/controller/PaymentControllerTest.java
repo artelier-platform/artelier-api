@@ -54,8 +54,6 @@ class PaymentControllerTest {
     @MockitoBean
     private UserRepository userRepository;
 
-    // ─── POST /webhook ────────────────────────────────────────────────────────
-
     @Test
     void shouldProcessWebhookAndReturn200() throws Exception {
         when(signatureValidator.isValid(any())).thenReturn(true);
@@ -96,7 +94,6 @@ class PaymentControllerTest {
         verifyNoInteractions(paymentService);
     }
 
-    // ─── POST /orders/{orderId} ───────────────────────────────────────────────
 
     @Test
     void shouldCreatePendingPaymentAndReturn201() throws Exception {
@@ -194,7 +191,6 @@ class PaymentControllerTest {
                 .andExpect(jsonPath("$.data.status").value("PENDING"));
     }
 
-    // ─── GET /orders/{orderId} ────────────────────────────────────────────────
 
     @Test
     void shouldReturnApprovedPaymentStatus() throws Exception {
@@ -232,7 +228,6 @@ class PaymentControllerTest {
                 .andExpect(status().isNotFound());
     }
 
-    // ─── GET /financial-institutions ─────────────────────────────────────────
 
     @Test
     void shouldReturnFinancialInstitutions() throws Exception {
@@ -257,7 +252,6 @@ class PaymentControllerTest {
                 .andExpect(jsonPath("$.data").isEmpty());
     }
 
-    // ─── helpers ─────────────────────────────────────────────────────────────
 
     private String buildCardPaymentRequestJson() {
         return """

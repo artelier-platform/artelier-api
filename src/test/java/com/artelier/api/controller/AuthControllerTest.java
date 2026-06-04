@@ -93,7 +93,6 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.data.token").value("access-token"));
     }
 
-    // 🔹 REFRESH
     @Test
     void shouldRefreshToken() throws Exception {
         RefreshRequest request = new RefreshRequest();
