@@ -15,24 +15,49 @@ import org.springframework.context.annotation.Configuration;
 
         info = @Info(
                 title = "Artelier API",
-                version = "0.1.0",
+                version = "1.0.0",
                 description = """
-                        Artelier API is a REST backend for an e-commerce platform focused on handmade and artisanal products.
+                        REST backend for **Artelier**, an e-commerce platform for handmade \
+                        and artisanal products.
 
-                        **Features:**
-                        • JWT authentication and role-based authorization (ADMIN / BUYER)
-                        • Product catalog with categories and images
-                        • Cloudinary image management
-                        • Order system with stock validation
-                        • Admin operations for catalog and users
-                        • Payment integration via **Wompi** gateway (webhook + signature validation)
+                        ## MVP Scope
 
-                        **Authentication:**
+                        This release covers the complete backend feature set:
+
+                        | Module | Description |
+                        |--------|-------------|
+                        | **Authentication** | JWT-based login, registration, token refresh, and logout with refresh-token rotation |
+                        | **Authorization** | Role-based access control — `ADMIN` and `BUYER` roles |
+                        | **User Moderation** | Admin ban / unban operations |
+                        | **Product Catalog** | Full CRUD with category filtering, slug generation, soft delete, and visibility toggle |
+                        | **Image Management** | Cloudinary upload and deletion, coordinated by index with per-image metadata |
+                        | **Categories** | Public listing and admin creation with unique slug enforcement |
+                        | **Order Management** | Order creation with stock validation, role-scoped listing, status transitions, and pagination |
+                        | **Payments** | Wompi gateway integration — CARD, PSE, and NEQUI; webhook processing with SHA-256 signature validation |
+                        | **Admin Statistics** | Dashboard metrics: monthly sales, pending orders, active products, and top-selling product |
+                        | **CI/CD** | Automated pipeline with SonarCloud quality gate and deployment to Render |
+
+                        ## Authentication
+
                         Most endpoints require a Bearer JWT token in the `Authorization` header.
-                        The only public exception is `POST /api/v1/payments/webhook`, which is
-                        secured via Wompi event signature validation (SHA-256 checksum).
 
-                        Architecture follows a modular Spring Boot design based on sprint-driven development.
+                        The only intentionally public endpoint is `POST /api/v1/payments/webhook`,
+                        which is secured via Wompi SHA-256 event signature validation instead of JWT.
+
+                        ## Stock Types
+
+                        | Type | Behavior |
+                        |------|----------|
+                        | `UNLIMITED` | No stock tracking |
+                        | `AVAILABLE` | Stock tracked and decremented on order |
+                        | `MADE_TO_ORDER` | Stock tracked; items produced on demand |
+
+                        ## Order Status Flow
+                        
+                        PENDING_PAYMENT → PROCESSING → PAID → SHIPPED
+                         ↓
+                        CANCELLED  (buyer only, from PENDING_PAYMENT)
+                        
                         """,
 
                 contact = @Contact(
@@ -49,14 +74,13 @@ import org.springframework.context.annotation.Configuration;
 
         servers = {
                 @Server(
+                        description = "Production",
+                        url = "https://artelier-api-djt4.onrender.com"
+                ),
+                @Server(
                         description = "Local Development",
                         url = "http://localhost:8080"
                 )
-                // ,
-                // @Server(
-                //         description = "Production",
-                //         url = "https://api.artelier.com"
-                // )
         },
 
         security = {

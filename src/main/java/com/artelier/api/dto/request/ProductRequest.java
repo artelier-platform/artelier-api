@@ -1,6 +1,6 @@
 package com.artelier.api.dto.request;
 
-import com.artelier.api.entity.enums.StockType;
+import com.artelier.api.enums.StockType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
@@ -42,7 +42,12 @@ public class ProductRequest {
     @NotNull
     private StockType stockType;
 
-    @Schema(example = "10")
+    @Schema(
+            description = "Stock quantity. Required for AVAILABLE and MADE_TO_ORDER stock types",
+            example = "10",
+            minimum = "0",
+            nullable = true
+    )
     @Min(0)
     private Integer stockQuantity;
 
@@ -55,5 +60,5 @@ public class ProductRequest {
     private Boolean isActive;
 
     @Valid
-    private List<ProductImageRequest> images;
+    private List<ImageMetadata> images;
 }

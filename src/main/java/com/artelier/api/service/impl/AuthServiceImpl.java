@@ -5,7 +5,7 @@ import com.artelier.api.dto.request.RegisterRequest;
 import com.artelier.api.dto.response.AuthResponse;
 import com.artelier.api.entity.RefreshToken;
 import com.artelier.api.entity.User;
-import com.artelier.api.entity.enums.Role;
+import com.artelier.api.enums.Role;
 import com.artelier.api.exception.ArtelierException;
 import com.artelier.api.repository.UserRepository;
 import com.artelier.api.security.JwtUtil;

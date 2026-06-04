@@ -1,7 +1,8 @@
 package com.artelier.api.repository;
 
 import com.artelier.api.entity.Order;
-import com.artelier.api.entity.enums.OrderStatus;
+import com.artelier.api.entity.User;
+import com.artelier.api.enums.OrderStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -16,6 +17,10 @@ import java.util.UUID;
 
 @Repository
 public interface OrderRepository extends JpaRepository<Order, UUID> {
+
+    Page<Order> findByUserAndStatus(User requester, OrderStatus status, Pageable pageable);
+
+    Page<Order> findByUser(User requester, Pageable pageable);
 
     Page<Order> findByStatus(OrderStatus status, Pageable pageable);
 

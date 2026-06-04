@@ -1,6 +1,6 @@
 package com.artelier.api.exception;
 
-import com.artelier.api.entity.enums.OrderStatus;
+import com.artelier.api.enums.OrderStatus;
 
 public class InvalidOrderStateException extends ArtelierException {
 

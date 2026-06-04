@@ -1,6 +1,7 @@
 package com.artelier.api.controller;
 
 import com.artelier.api.dto.response.StatsResponse;
+import com.artelier.api.repository.UserRepository;
 import com.artelier.api.security.JwtUtil;
 import com.artelier.api.service.StatsService;
 import org.junit.jupiter.api.Test;
@@ -30,6 +31,9 @@ class StatsControllerTest {
     @MockitoBean
     private JwtUtil jwtUtil;
 
+    @MockitoBean
+    private UserRepository userRepository;
+
     @Test
     void shouldGetStats() throws Exception {
 
@@ -50,10 +54,10 @@ class StatsControllerTest {
 
         mockMvc.perform(get("/admin/stats"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalSalesThisMonth").value(1500))
-                .andExpect(jsonPath("$.pendingOrders").value(5))
-                .andExpect(jsonPath("$.activeProducts").value(12))
-                .andExpect(jsonPath("$.topSellingProduct.name").value("Naruto Figure"))
-                .andExpect(jsonPath("$.topSellingProduct.totalSold").value(25));
+                .andExpect(jsonPath("$.data.totalSalesThisMonth").value(1500))
+                .andExpect(jsonPath("$.data.pendingOrders").value(5))
+                .andExpect(jsonPath("$.data.activeProducts").value(12))
+                .andExpect(jsonPath("$.data.topSellingProduct.name").value("Naruto Figure"))
+                .andExpect(jsonPath("$.data.topSellingProduct.totalSold").value(25));
     }
 }

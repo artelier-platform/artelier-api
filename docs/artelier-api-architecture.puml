@@ -8,7 +8,6 @@ skinparam linetype ortho
 skinparam nodesep 30
 skinparam ranksep 40
 
-' ── Estilos ────────────────────────────────────────────────────
 skinparam package {
   BorderColor      #888780
   BackgroundColor  transparent
@@ -53,20 +52,26 @@ skinparam arrow {
   FontColor        #888780
 }
 
-' ── Actor externo ──────────────────────────────────────────────
+' ── Actores externos ───────────────────────────────────────────
 actor "Client" as CLIENT
+actor "Wompi"  as WOMPI
 
 ' ── Capa: Security ─────────────────────────────────────────────
 package "Security" {
-  component [JwtFilter]     as JF
-  component [JwtUtil]       as JU
+  component [JwtFilter]      as JF
+  component [JwtUtil]        as JU
+  component [UserPrincipal]  as UP
   component [SecurityConfig] as SECC
 }
 
-' ── Capa: Exception (transversal) ──────────────────────────────
+' ── Capa: Exception ────────────────────────────────────────────
 package "Exception" {
-  component [GlobalExceptionHandler] as GEH
-  component [ArtelierException]      as AEX
+  component [GlobalExceptionHandler]   as GEH
+  component [ArtelierException]        as AEX
+  component [OrderNotFoundException]   as OEXC
+  component [PaymentNotFoundException] as PEXC
+  component [InvalidOrderStateException] as IOSEXC
+  component [WompiException]           as WEXC
 }
 
 ' ── Capa: Controller ───────────────────────────────────────────
@@ -75,23 +80,42 @@ package "Controller" {
   component [AdminController]    as ADMINC
   component [CategoryController] as CATC
   component [ProductController]  as PRODC
+  component [OrderController]    as ORDC
+  component [PaymentController]  as PAYC
+  component [StatsController]    as STATSC
 }
 
 ' ── Capa: Service ──────────────────────────────────────────────
 package "Service" {
-  component [AuthService]         as AUTHS
-  component [AdminService]        as ADMINS
-  component [CategoryService]     as CATS
-  component [ProductService]      as PRODS
-  component [RefreshTokenService] as REFS
-  component [CloudinaryService]   as CLOUDS
+  component [AuthService]                 as AUTHS
+  component [AdminService]                as ADMINS
+  component [CategoryService]             as CATS
+  component [ProductService]              as PRODS
+  component [OrderService]                as ORDS
+  component [PaymentService]              as PAYS
+  component [StatsService]                as STATS
+  component [RefreshTokenService]         as REFS
+  component [CloudinaryService]           as CLOUDS
+  component [WompiAcceptanceTokenService] as WOMPITOK
+  component [WompiSignatureValidator]     as WOMPISIG
+  component [LoginAttemptService]         as LOGATT
 }
 
-' ── Capa: Mapper (MapStruct) ───────────────────────────────────
+' ── Capa: Integration ──────────────────────────────────────────
+package "Integration" {
+  component [WompiClient\n(Feign)]              as WOMPICL
+  component [WompiIntegritySignatureUtil]       as WOMPIUTIL
+  component [WompiAuthRequestInterceptor]       as WOMPIAUTH
+  component [WompiErrorDecoder]                 as WOMPIDEC
+}
+
+' ── Capa: Mapper ───────────────────────────────────────────────
 package "Mapper" {
-  component [CategoryMapper]     as CATM
-  component [ProductMapper]      as PRODM
-  component [ProductImageMapper] as PRODIMGM
+  component [CategoryMapper]  as CATM
+  component [ProductMapper]   as PRODM
+  component [OrderMapper]     as ORDM
+  component [PaymentMapper]   as PAYM
+  component [OrderItemMapper] as ORDITMM
 }
 
 ' ── Capa: Repository ───────────────────────────────────────────
@@ -101,90 +125,196 @@ package "Repository" {
   component [CategoryRepository]     as CATR
   component [ProductRepository]      as PRODR
   component [ProductImageRepository] as PRODIMGR
+  component [OrderRepository]        as ORDR
+  component [OrderItemRepository]    as ORDITEMNR
+  component [PaymentRepository]      as PAYR
 }
 
 ' ── Infraestructura ────────────────────────────────────────────
 database "PostgreSQL 16" as DB
-cloud    "Cloudinary"     as CDN
+cloud    "Cloudinary"    as CDN
+cloud    "Wompi API"     as WOMPIAPI
 
-' ── Relaciones ─────────────────────────────────────────────────
+' ── Entrada ────────────────────────────────────────────────────
 
-CLIENT      -->  JF       : HTTP request
-JF          ..>  JU       : validate JWT
-JF          -->  AUTHC
-JF          -->  ADMINC
-JF          -->  CATC
-JF          -->  PRODC
+CLIENT  -->  JF      : HTTP request
+WOMPI   -->  PAYC    : POST /payments/webhook\n(no JWT)
 
-' Exception handler intercepta todos los controllers
-GEH         ..>  AUTHC    : intercepts
-GEH         ..>  ADMINC   : intercepts
-GEH         ..>  CATC     : intercepts
-GEH         ..>  PRODC    : intercepts
-GEH         ..>  AEX      : wraps
+JF      ..>  JU      : validateToken / extractUsername
+JF      ..>  USERR   : findByEmail
+JF      ..>  UP      : build principal
+JF      ..>  SECC    : configured by
 
-' Controllers → Services
-AUTHC       -->  AUTHS
-ADMINC      -->  ADMINS
-CATC        -->  CATS
-PRODC       -->  PRODS
-PRODC       ..>  CLOUDS
+JF      -->  AUTHC
+JF      -->  ADMINC
+JF      -->  CATC
+JF      -->  PRODC
+JF      -->  ORDC
+JF      -->  PAYC
+JF      -->  STATSC
 
-' Services → Repositories
-AUTHS       -->  USERR
-AUTHS       -->  REFS
-ADMINS      -->  USERR
-CATS        -->  CATR
-PRODS       -->  PRODR
-PRODS       -->  PRODIMGR
-REFS        -->  REFTOKENR
+' ── Exception handler ──────────────────────────────────────────
 
-' Services → Mappers
-CATS        ..>  CATM
-PRODS       ..>  PRODM
-PRODS       ..>  PRODIMGM
+GEH     ..>  AUTHC   : intercepts
+GEH     ..>  ADMINC  : intercepts
+GEH     ..>  CATC    : intercepts
+GEH     ..>  PRODC   : intercepts
+GEH     ..>  ORDC    : intercepts
+GEH     ..>  PAYC    : intercepts
+GEH     ..>  STATSC  : intercepts
+GEH     ..>  AEX     : handles
+GEH     ..>  OEXC    : handles
+GEH     ..>  PEXC    : handles
+GEH     ..>  IOSEXC  : handles
+GEH     ..>  WEXC    : handles
 
-' Repositories → DB
+OEXC    --|> AEX
+PEXC    --|> AEX
+IOSEXC  --|> AEX
+
+' ── Controllers → Services ─────────────────────────────────────
+
+AUTHC   -->  AUTHS
+ADMINC  -->  ADMINS
+CATC    -->  CATS
+PRODC   -->  PRODS
+ORDC    -->  ORDS
+PAYC    -->  PAYS
+PAYC    -->  WOMPISIG
+STATSC  -->  STATS
+
+' ── Services → Services ────────────────────────────────────────
+
+AUTHS   -->  REFS
+AUTHS   -->  LOGATT
+PAYS    -->  ORDS        : updateOrderStatusInternal
+PAYS    -->  WOMPITOK
+PAYS    -->  WOMPICL
+PAYS    ..>  WOMPIUTIL   : generate integrity signature
+WOMPITOK --> WOMPICL
+
+' ── Services → Repositories ────────────────────────────────────
+
+AUTHS   -->  USERR
+ADMINS  -->  USERR
+CATS    -->  CATR
+PRODS   -->  PRODR
+PRODS   -->  PRODIMGR
+PRODS   -->  CATR
+PRODS   -->  CLOUDS
+ORDS    -->  ORDR
+ORDS    -->  USERR
+ORDS    -->  PRODR
+PAYS    -->  PAYR
+PAYS    -->  ORDR
+REFS    -->  REFTOKENR
+STATS   -->  ORDR
+STATS   -->  ORDITEMNR
+STATS   -->  PRODR
+
+' ── Services → Mappers ─────────────────────────────────────────
+
+CATS    ..>  CATM
+PRODS   ..>  PRODM
+ORDS    ..>  ORDM
+ORDS    ..>  ORDITMM
+PAYS    ..>  PAYM
+
+' ── Integration interna ────────────────────────────────────────
+
+WOMPICL ..>  WOMPIAUTH  : uses interceptor
+WOMPICL ..>  WOMPIDEC   : uses error decoder
+
+' ── Repositories → DB ──────────────────────────────────────────
+
 USERR       -->  DB
 REFTOKENR   -->  DB
 CATR        -->  DB
 PRODR       -->  DB
 PRODIMGR    -->  DB
+ORDR        -->  DB
+ORDITEMNR   -->  DB
+PAYR        -->  DB
 
-' Service externo
+' ── Servicios externos ─────────────────────────────────────────
+
 CLOUDS      -->  CDN
+WOMPICL     -->  WOMPIAPI
 
 ' ── Notas ──────────────────────────────────────────────────────
+
 note right of JF
   Intercepta toda request entrante.
-  Extrae y valida el JWT con JwtUtil.
-  Popula el SecurityContext de Spring.
+  Extrae y valida JWT con JwtUtil.
+  Carga User desde UserRepository.
+  Verifica ban — responde 401 si aplica.
+  Construye UserPrincipal y lo inyecta
+  en el SecurityContext de Spring.
+  Requests sin header Authorization
+  pasan al filtro de Spring Security.
 end note
 
 note right of GEH
-  Manejo centralizado de errores.
-  Convierte ArtelierException y otras
-  excepciones en ApiResponse<error>.
+  @RestControllerAdvice centralizado.
+  Maneja: ArtelierException y subclases,
+  MethodArgumentNotValidException,
+  ConstraintViolationException,
+  AccessDeniedException,
+  HttpMessageNotReadableException,
+  WompiException, Exception genérica.
 end note
 
-note right of CATM
-  Mappers auto-generados por MapStruct
-  en tiempo de compilación.
-  No instanciados manualmente.
+note right of PAYC
+  POST /payments/webhook es público.
+  WompiSignatureValidator verifica
+  checksum SHA-256 antes de procesar.
+  Eventos distintos a transaction.updated
+  se ignoran con 200 OK.
+end note
+
+note right of PAYS
+  Coordina con OrderService para
+  transicionar estado de la orden.
+  WompiIntegritySignatureUtil genera
+  la firma de integridad para Wompi.
+  WompiAcceptanceTokenService cachea
+  tokens con @Cacheable("wompiTokens").
+end note
+
+note right of AUTHS
+  LoginAttemptService aplica rate limit
+  con Bucket4j (5 intentos / 5 min).
+  RefreshTokenService gestiona rotación
+  de tokens (single-use).
+end note
+
+note right of STATS
+  Agrega datos de tres repositorios:
+  ventas del mes, órdenes pendientes,
+  productos activos y top producto.
 end note
 
 note bottom of DB
   Schema gestionado con Flyway.
   V1: users + refresh_tokens
   V2: categories
-  V3: products
-  V4: product_images
+  V3: products + product_images
+  V4: orders + order_items
+  V5: payments
 end note
 
 note bottom of CDN
-  Almacenamiento de imágenes de productos.
-  CloudinaryService gestiona upload
-  y retorna URL + public_id.
+  CloudinaryService sube imágenes
+  a la carpeta artelier/products.
+  Retorna secureUrl + publicId.
+end note
+
+note bottom of WOMPIAPI
+  Feign client autenticado via
+  WompiAuthRequestInterceptor.
+  Errores mapeados por WompiErrorDecoder
+  a WompiException.
+  Endpoints: merchants, transactions, PSE.
 end note
 
 @enduml

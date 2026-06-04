@@ -3,8 +3,9 @@ package com.artelier.api.service;
 import com.artelier.api.dto.request.OrderRequest;
 import com.artelier.api.dto.response.OrderResponse;
 import com.artelier.api.entity.*;
-import com.artelier.api.entity.enums.OrderStatus;
-import com.artelier.api.entity.enums.StockType;
+import com.artelier.api.enums.OrderStatus;
+import com.artelier.api.enums.Role;
+import com.artelier.api.enums.StockType;
 import com.artelier.api.exception.ArtelierException;
 import com.artelier.api.mapper.OrderMapper;
 import com.artelier.api.repository.OrderRepository;
@@ -33,30 +34,42 @@ class OrderServiceTest {
     @InjectMocks
     private OrderServiceImpl service;
 
-
-    @Test
-    void shouldCreateOrderSuccessfully() {
-        String email = "user@test.com";
-
+    private User buildUser(Role role) {
         User user = new User();
-        user.setEmail(email);
+        user.setId(UUID.randomUUID());
+        user.setEmail("user@test.com");
+        user.setRole(role);
+        return user;
+    }
 
+    private Product buildProduct(StockType stockType, int stock) {
         Product product = new Product();
         product.setId(UUID.randomUUID());
         product.setIsActive(true);
         product.setPrice(BigDecimal.valueOf(100));
-        product.setStockType(StockType.AVAILABLE);
-        product.setStockQuantity(10);
+        product.setStockType(stockType);
+        product.setStockQuantity(stock);
+        return product;
+    }
 
-        OrderRequest.OrderItemRequest itemRequest = new OrderRequest.OrderItemRequest();
-        itemRequest.setProductId(product.getId());
-        itemRequest.setQuantity(2);
-        itemRequest.setCustomNotes("note");
+    private OrderRequest buildRequest(UUID productId, int quantity) {
+        OrderRequest.OrderItemRequest item = new OrderRequest.OrderItemRequest();
+        item.setProductId(productId);
+        item.setQuantity(quantity);
+        item.setCustomNotes("note");
 
         OrderRequest request = new OrderRequest();
         request.setShippingAddress("Calle 123");
         request.setNotes("Urgente");
-        request.setItems(List.of(itemRequest));
+        request.setItems(List.of(item));
+        return request;
+    }
+
+    @Test
+    void shouldCreateOrderSuccessfully() {
+        User user = buildUser(Role.BUYER);
+        Product product = buildProduct(StockType.AVAILABLE, 10);
+        OrderRequest request = buildRequest(product.getId(), 2);
 
         Order savedOrder = Order.builder()
                 .user(user)
@@ -64,15 +77,53 @@ class OrderServiceTest {
                 .items(new ArrayList<>())
                 .build();
 
-        when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
+        when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
         when(productRepository.findById(product.getId())).thenReturn(Optional.of(product));
         when(orderRepository.save(any())).thenReturn(savedOrder);
         when(orderMapper.toResponse(savedOrder)).thenReturn(OrderResponse.builder().build());
 
-        OrderResponse result = service.createOrder(request, email);
+        OrderResponse result = service.createOrder(request, user.getEmail());
 
         assertNotNull(result);
+        assertEquals(8, product.getStockQuantity()); // 10 - 2
         verify(orderRepository).save(any());
+    }
+
+    @Test
+    void shouldCreateOrderWithUnlimitedStock() {
+        User user = buildUser(Role.BUYER);
+        Product product = buildProduct(StockType.UNLIMITED, 0);
+        OrderRequest request = buildRequest(product.getId(), 99);
+
+        Order savedOrder = Order.builder()
+                .user(user)
+                .status(OrderStatus.PENDING_PAYMENT)
+                .items(new ArrayList<>())
+                .build();
+
+        when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+        when(productRepository.findById(product.getId())).thenReturn(Optional.of(product));
+        when(orderRepository.save(any())).thenReturn(savedOrder);
+        when(orderMapper.toResponse(savedOrder)).thenReturn(OrderResponse.builder().build());
+
+        OrderResponse result = service.createOrder(request, user.getEmail());
+
+        assertNotNull(result);
+        assertEquals(0, product.getStockQuantity());
+    }
+
+    @Test
+    void shouldThrowIfInsufficientStock() {
+        User user = buildUser(Role.BUYER);
+        Product product = buildProduct(StockType.AVAILABLE, 1);
+        OrderRequest request = buildRequest(product.getId(), 5);
+
+        when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+        when(productRepository.findById(product.getId())).thenReturn(Optional.of(product));
+
+        assertThrows(ArtelierException.class, () -> {
+            service.createOrder(request, user.getEmail());
+        });
     }
 
     @Test
@@ -88,55 +139,37 @@ class OrderServiceTest {
 
     @Test
     void shouldThrowIfProductNotFoundOnCreate() {
-        String email = "user@test.com";
-        User user = new User();
+        User user = buildUser(Role.BUYER);
+        OrderRequest request = buildRequest(UUID.randomUUID(), 1);
 
-        OrderRequest.OrderItemRequest itemRequest = new OrderRequest.OrderItemRequest();
-        itemRequest.setProductId(UUID.randomUUID());
-        itemRequest.setQuantity(1);
-
-        OrderRequest request = new OrderRequest();
-        request.setShippingAddress("Addr");
-        request.setItems(List.of(itemRequest));
-
-        when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
+        when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
         when(productRepository.findById(any())).thenReturn(Optional.empty());
 
-        assertThrows(ArtelierException.class,
-                () -> service.createOrder(request, email));
+        assertThrows(ArtelierException.class, () -> {
+            service.createOrder(request, user.getEmail());
+        });
     }
 
     @Test
     void shouldThrowIfProductIsInactiveOnCreate() {
-        String email = "user@test.com";
-        User user = new User();
-
-        Product product = new Product();
-        product.setId(UUID.randomUUID());
+        User user = buildUser(Role.BUYER);
+        Product product = buildProduct(StockType.AVAILABLE, 10);
         product.setIsActive(false);
-        product.setPrice(BigDecimal.TEN);
+        OrderRequest request = buildRequest(product.getId(), 1);
 
-        OrderRequest.OrderItemRequest itemRequest = new OrderRequest.OrderItemRequest();
-        itemRequest.setProductId(product.getId());
-        itemRequest.setQuantity(1);
-
-        OrderRequest request = new OrderRequest();
-        request.setShippingAddress("Addr");
-        request.setItems(List.of(itemRequest));
-
-        when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
+        when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
         when(productRepository.findById(product.getId())).thenReturn(Optional.of(product));
 
-        assertThrows(ArtelierException.class,
-                () -> service.createOrder(request, email));
+        assertThrows(ArtelierException.class, () -> {
+            service.createOrder(request, user.getEmail());
+        });
     }
-
 
     @Test
     void shouldReturnMyOrders() {
         String email = "user@test.com";
-
         Order order = new Order();
+
         when(orderRepository.findByUserEmailOrderByCreatedAtDesc(email))
                 .thenReturn(List.of(order));
         when(orderMapper.toResponse(order)).thenReturn(OrderResponse.builder().build());
@@ -147,92 +180,295 @@ class OrderServiceTest {
         verify(orderRepository).findByUserEmailOrderByCreatedAtDesc(email);
     }
 
+    @Test
+    void shouldReturnEmptyListIfNoOrders() {
+        String email = "user@test.com";
+
+        when(orderRepository.findByUserEmailOrderByCreatedAtDesc(email))
+                .thenReturn(List.of());
+
+        List<OrderResponse> result = service.getMyOrders(email);
+
+        assertTrue(result.isEmpty());
+    }
 
     @Test
-    void shouldReturnAllOrdersWithoutStatusFilter() {
+    void adminShouldGetAllOrdersWithoutStatusFilter() {
+        User admin = buildUser(Role.ADMIN);
         Pageable pageable = PageRequest.of(0, 10);
         Page<Order> page = new PageImpl<>(List.of(new Order()));
 
         when(orderRepository.findAll(pageable)).thenReturn(page);
         when(orderMapper.toResponse(any())).thenReturn(OrderResponse.builder().build());
 
-        Page<OrderResponse> result = service.getAllOrders(null, pageable);
+        Page<OrderResponse> result = service.getAllOrders(null, pageable, admin);
 
         assertEquals(1, result.getContent().size());
         verify(orderRepository).findAll(pageable);
+        verify(orderRepository, never()).findByStatus(any(), any());
     }
 
     @Test
-    void shouldReturnAllOrdersFilteredByStatus() {
+    void adminShouldGetAllOrdersFilteredByStatus() {
+        User admin = buildUser(Role.ADMIN);
         Pageable pageable = PageRequest.of(0, 10);
         Page<Order> page = new PageImpl<>(List.of(new Order()));
 
-        when(orderRepository.findByStatus(OrderStatus.PENDING_PAYMENT, pageable)).thenReturn(page);
+        when(orderRepository.findByStatus(OrderStatus.PAID, pageable)).thenReturn(page);
         when(orderMapper.toResponse(any())).thenReturn(OrderResponse.builder().build());
 
-        Page<OrderResponse> result = service.getAllOrders(OrderStatus.PENDING_PAYMENT, pageable);
+        Page<OrderResponse> result = service.getAllOrders(OrderStatus.PAID, pageable, admin);
 
         assertEquals(1, result.getContent().size());
-        verify(orderRepository).findByStatus(OrderStatus.PENDING_PAYMENT, pageable);
+        verify(orderRepository).findByStatus(OrderStatus.PAID, pageable);
+        verify(orderRepository, never()).findAll(pageable);
     }
 
+    @Test
+    void buyerShouldGetOnlyOwnOrdersWithoutStatusFilter() {
+        User buyer = buildUser(Role.BUYER);
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Order> page = new PageImpl<>(List.of(new Order()));
+
+        when(orderRepository.findByUser(buyer, pageable)).thenReturn(page);
+        when(orderMapper.toResponse(any())).thenReturn(OrderResponse.builder().build());
+
+        Page<OrderResponse> result = service.getAllOrders(null, pageable, buyer);
+
+        assertEquals(1, result.getContent().size());
+        verify(orderRepository).findByUser(buyer, pageable);
+        verify(orderRepository, never()).findAll(pageable);
+    }
 
     @Test
-    void shouldUpdateOrderStatus() {
+    void buyerShouldGetOnlyOwnOrdersFilteredByStatus() {
+        User buyer = buildUser(Role.BUYER);
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Order> page = new PageImpl<>(List.of(new Order()));
+
+        when(orderRepository.findByUserAndStatus(buyer, OrderStatus.PENDING_PAYMENT, pageable))
+                .thenReturn(page);
+        when(orderMapper.toResponse(any())).thenReturn(OrderResponse.builder().build());
+
+        Page<OrderResponse> result = service.getAllOrders(OrderStatus.PENDING_PAYMENT, pageable, buyer);
+
+        assertEquals(1, result.getContent().size());
+        verify(orderRepository).findByUserAndStatus(buyer, OrderStatus.PENDING_PAYMENT, pageable);
+    }
+
+    @Test
+    void adminShouldShipPaidOrder() {
+        User admin = buildUser(Role.ADMIN);
         UUID orderId = UUID.randomUUID();
 
         Order order = new Order();
-        order.setStatus(OrderStatus.PENDING_PAYMENT);
+        order.setStatus(OrderStatus.PAID);
 
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
         when(orderMapper.toResponse(order)).thenReturn(OrderResponse.builder().build());
 
-        OrderResponse result = service.updateOrderStatus(orderId, OrderStatus.SHIPPED);
+        service.updateOrderStatus(orderId, OrderStatus.SHIPPED, admin);
 
         assertEquals(OrderStatus.SHIPPED, order.getStatus());
-        assertNotNull(result);
+    }
+
+    @Test
+    void adminShouldThrowIfTargetStatusIsNotShipped() {
+        User admin = buildUser(Role.ADMIN);
+        UUID orderId = UUID.randomUUID();
+
+        Order order = new Order();
+        order.setStatus(OrderStatus.PAID);
+
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+
+        assertThrows(ArtelierException.class,
+                () -> service.updateOrderStatus(orderId, OrderStatus.CANCELLED, admin));
+    }
+
+    @Test
+    void adminShouldThrowIfOrderIsNotPaidWhenShipping() {
+        User admin = buildUser(Role.ADMIN);
+        UUID orderId = UUID.randomUUID();
+
+        Order order = new Order();
+        order.setStatus(OrderStatus.PROCESSING);
+
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+
+        assertThrows(ArtelierException.class,
+                () -> service.updateOrderStatus(orderId, OrderStatus.SHIPPED, admin));
+    }
+
+    @Test
+    void buyerShouldCancelOwnPendingOrder() {
+        User buyer = buildUser(Role.BUYER);
+        UUID orderId = UUID.randomUUID();
+
+        Order order = new Order();
+        order.setStatus(OrderStatus.PENDING_PAYMENT);
+        order.setUser(buyer);
+
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+        when(orderMapper.toResponse(order)).thenReturn(OrderResponse.builder().build());
+
+        service.updateOrderStatus(orderId, OrderStatus.CANCELLED, buyer);
+
+        assertEquals(OrderStatus.CANCELLED, order.getStatus());
+    }
+
+    @Test
+    void buyerShouldThrowIfTargetStatusIsNotCancelled() {
+        User buyer = buildUser(Role.BUYER);
+        UUID orderId = UUID.randomUUID();
+
+        Order order = new Order();
+        order.setStatus(OrderStatus.PENDING_PAYMENT);
+        order.setUser(buyer);
+
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+
+        assertThrows(ArtelierException.class,
+                () -> service.updateOrderStatus(orderId, OrderStatus.SHIPPED, buyer));
+    }
+
+    @Test
+    void buyerShouldThrowIfOrderIsNotPendingPaymentWhenCancelling() {
+        User buyer = buildUser(Role.BUYER);
+        UUID orderId = UUID.randomUUID();
+
+        Order order = new Order();
+        order.setStatus(OrderStatus.PAID);
+        order.setUser(buyer);
+
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+
+        assertThrows(ArtelierException.class,
+                () -> service.updateOrderStatus(orderId, OrderStatus.CANCELLED, buyer));
+    }
+
+    @Test
+    void buyerShouldThrowIfOrderBelongsToAnotherUser() {
+        User buyer = buildUser(Role.BUYER);
+
+        User otherUser = new User();
+        otherUser.setId(UUID.randomUUID());
+
+        UUID orderId = UUID.randomUUID();
+
+        Order order = new Order();
+        order.setStatus(OrderStatus.PENDING_PAYMENT);
+        order.setUser(otherUser);
+
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+
+        assertThrows(ArtelierException.class,
+                () -> service.updateOrderStatus(orderId, OrderStatus.CANCELLED, buyer));
     }
 
     @Test
     void shouldThrowIfOrderNotFoundOnUpdateStatus() {
+        User admin = buildUser(Role.ADMIN);
         when(orderRepository.findById(any())).thenReturn(Optional.empty());
 
         assertThrows(ArtelierException.class,
-                () -> service.updateOrderStatus(UUID.randomUUID(), OrderStatus.SHIPPED));
+                () -> service.updateOrderStatus(UUID.randomUUID(), OrderStatus.SHIPPED, admin));
     }
 
     @Test
-    void shouldThrowIfOrderIsCancelledOnUpdateStatus() {
+    void shouldUpdateOrderStatusInternally() {
         UUID orderId = UUID.randomUUID();
+        Order order = new Order();
+        order.setStatus(OrderStatus.PROCESSING);
 
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+
+        service.updateOrderStatusInternal(orderId, OrderStatus.PAID);
+
+        assertEquals(OrderStatus.PAID, order.getStatus());
+        verify(orderRepository).save(order);
+    }
+
+    @Test
+    void shouldThrowInternalUpdateIfOrderIsCancelled() {
+        UUID orderId = UUID.randomUUID();
         Order order = new Order();
         order.setStatus(OrderStatus.CANCELLED);
 
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
 
         assertThrows(ArtelierException.class,
-                () -> service.updateOrderStatus(orderId, OrderStatus.SHIPPED));
+                () -> service.updateOrderStatusInternal(orderId, OrderStatus.PAID));
     }
 
+    @Test
+    void shouldThrowIfOrderNotFoundOnInternalUpdate() {
+        when(orderRepository.findById(any())).thenReturn(Optional.empty());
+
+        assertThrows(ArtelierException.class,
+                () -> service.updateOrderStatusInternal(UUID.randomUUID(), OrderStatus.PAID));
+    }
 
     @Test
-    void shouldReturnOrderById() {
+    void adminShouldGetAnyOrderById() {
+        User admin = buildUser(Role.ADMIN);
         UUID orderId = UUID.randomUUID();
+
+        User otherUser = new User();
+        otherUser.setId(UUID.randomUUID());
+
         Order order = new Order();
+        order.setUser(otherUser);
 
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
         when(orderMapper.toResponse(order)).thenReturn(OrderResponse.builder().build());
 
-        OrderResponse result = service.getOrderById(orderId);
+        OrderResponse result = service.getOrderById(orderId, admin);
 
         assertNotNull(result);
     }
 
     @Test
-    void shouldThrowIfOrderNotFoundById() {
-        when(orderRepository.findById(any())).thenReturn(Optional.empty());
+    void buyerShouldGetOwnOrderById() {
+        User buyer = buildUser(Role.BUYER);
+        UUID orderId = UUID.randomUUID();
+
+        Order order = new Order();
+        order.setUser(buyer);
+
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+        when(orderMapper.toResponse(order)).thenReturn(OrderResponse.builder().build());
+
+        OrderResponse result = service.getOrderById(orderId, buyer);
+
+        assertNotNull(result);
+    }
+
+    @Test
+    void buyerShouldThrowIfAccessingAnotherUsersOrder() {
+        User buyer = buildUser(Role.BUYER);
+
+        User otherUser = new User();
+        otherUser.setId(UUID.randomUUID());
+
+        UUID orderId = UUID.randomUUID();
+
+        Order order = new Order();
+        order.setUser(otherUser);
+
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
 
         assertThrows(ArtelierException.class,
-                () -> service.getOrderById(UUID.randomUUID()));
+                () -> service.getOrderById(orderId, buyer));
+    }
+
+    @Test
+    void shouldThrowIfOrderNotFoundById() {
+        User admin = buildUser(Role.ADMIN);
+        when(orderRepository.findById(any())).thenReturn(Optional.empty());
+
+        assertThrows(ArtelierException.class, () -> {
+            service.getOrderById(UUID.randomUUID(), admin);
+        });
     }
 }

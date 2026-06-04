@@ -1,6 +1,7 @@
 package com.artelier.api.controller;
 
 import com.artelier.api.config.SecurityConfig;
+import com.artelier.api.repository.UserRepository;
 import com.artelier.api.security.JwtUtil;
 import com.artelier.api.service.AdminService;
 import org.junit.jupiter.api.DisplayName;
@@ -33,6 +34,9 @@ class AdminControllerTest {
 
     @MockitoBean
     private JwtUtil jwtUtil;
+
+    @MockitoBean
+    private UserRepository userRepository;
 
     @Nested
     @DisplayName("PATCH /admin/users/{id}/ban")

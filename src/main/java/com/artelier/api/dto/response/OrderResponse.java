@@ -1,6 +1,6 @@
 package com.artelier.api.dto.response;
 
-import com.artelier.api.entity.enums.OrderStatus;
+import com.artelier.api.enums.OrderStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Data;
