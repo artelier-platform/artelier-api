@@ -6,28 +6,28 @@
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
 		<version>4.0.5</version>
-		<relativePath/> <!-- lookup parent from repository -->
+		<relativePath/>
 	</parent>
 	<groupId>com.artelier</groupId>
 	<artifactId>artelier-api</artifactId>
-	<version>0.1.0-SNAPSHOT</version>
+	<version>1.0.0</version>
 
 	<name>Artelier API</name>
 
 	<description>
-		Artelier API is a scalable backend system for an e-commerce platform focused on handmade and artisanal products.
+		Artelier API is the backend for an e-commerce platform focused on handmade
+		and artisanal products.
 
-		It provides a full product catalog system, including categories, product images with Cloudinary integration, authentication with JWT, order management, payments integration, and admin dashboard support.
+		This MVP release provides a complete, production-deployed REST API covering:
+		JWT authentication with refresh-token rotation, role-based access control
+		(ADMIN / BUYER), a full product catalog with Cloudinary image management,
+		category organization, order management with stock validation and status
+		transitions, Wompi payment gateway integration (CARD, PSE, NEQUI) with
+		webhook signature validation, user moderation (ban / unban), and an admin
+		statistics dashboard.
 
-		The project is designed as a modular Spring Boot architecture following a multi-sprint roadmap:
-		- Product Catalog &amp; Inventory Management
-		- Shopping Cart &amp; Order Processing
-		- Payment Integration (Wompi)
-		- Admin Dashboard &amp; Analytics
-		- CI/CD &amp; Deployment Automation
-		- Optional social features (wishlist, reviews, testimonials)
-
-		Built as part of a real-world engineering learning project and startup foundation.
+		CI/CD is fully configured with SonarCloud quality gates. The API is deployed
+		at https://artelier-api-djt4.onrender.com.
 	</description>
 
 	<url>https://github.com/artelier-platform/artelier-api</url>
@@ -48,7 +48,7 @@
 			<roles>
 				<role>Full Stack Developer</role>
 				<role>Backend Engineer</role>
-				<role>System Architect (Learning)</role>
+				<role>System Architect</role>
 			</roles>
 		</developer>
 	</developers>
@@ -57,7 +57,7 @@
 		<connection>scm:git:git://github.com/artelier-platform/artelier-api.git</connection>
 		<developerConnection>scm:git:ssh://github.com/artelier-platform/artelier-api.git</developerConnection>
 		<url>https://github.com/artelier-platform/artelier-api</url>
-		<tag>HEAD</tag>
+		<tag>v1.0.0</tag>
 	</scm>
 
 	<properties>
@@ -86,6 +86,23 @@
 		</sonar.coverage.exclusions>
 	</properties>
 
+
+	<dependencyManagement>
+		<dependencies>
+			<!-- Force upgrade of vulnerable transitive dependencies from OpenFeign -->
+			<dependency>
+				<groupId>commons-fileupload</groupId>
+				<artifactId>commons-fileupload</artifactId>
+				<version>1.6.0</version>
+			</dependency>
+			<dependency>
+				<groupId>org.bouncycastle</groupId>
+				<artifactId>bcprov-jdk18on</artifactId>
+				<version>1.84</version>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
+
 	<dependencies>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -94,6 +111,17 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-cache</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.github.ben-manes.caffeine</groupId>
+			<artifactId>caffeine</artifactId>
+		</dependency>
+		<!-- Source: https://mvnrepository.com/artifact/org.springframework.cloud/spring-cloud-starter-openfeign -->
+		<dependency>
+			<groupId>org.springframework.cloud</groupId>
+			<artifactId>spring-cloud-starter-openfeign</artifactId>
+			<version>5.0.1</version>
+			<scope>compile</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

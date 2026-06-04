@@ -4,6 +4,7 @@ import com.artelier.api.config.JacksonTestConfig;
 import com.artelier.api.config.SecurityConfig;
 import com.artelier.api.dto.request.CategoryRequest;
 import com.artelier.api.dto.response.CategoryResponse;
+import com.artelier.api.repository.UserRepository;
 import com.artelier.api.security.JwtUtil;
 import com.artelier.api.service.CategoryService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -40,11 +41,11 @@ class CategoryControllerTest {
     @MockitoBean
     private JwtUtil jwtUtil;
 
+    @MockitoBean
+    private UserRepository userRepository;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    // ─────────────────────────────────────────────
-    // GET /categories
-    // ─────────────────────────────────────────────
     @Nested
     @DisplayName("GET /categories")
     class GetAll {
@@ -83,16 +84,11 @@ class CategoryControllerTest {
         @DisplayName("200 – endpoint is public, no auth required")
         void getAll_isPublic() throws Exception {
             when(categoryService.getAll()).thenReturn(List.of());
-
-            // Intencionalmente sin @WithMockUser
             mockMvc.perform(get("/categories"))
                     .andExpect(status().isOk());
         }
     }
 
-    // ─────────────────────────────────────────────
-    // POST /categories
-    // ─────────────────────────────────────────────
     @Nested
     @DisplayName("POST /categories")
     class Create {
@@ -184,9 +180,6 @@ class CategoryControllerTest {
         }
     }
 
-    // ─────────────────────────────────────────────
-    // Helpers
-    // ─────────────────────────────────────────────
     private CategoryRequest buildRequest(String name, String slug, String description) {
         CategoryRequest r = new CategoryRequest();
         r.setName(name);

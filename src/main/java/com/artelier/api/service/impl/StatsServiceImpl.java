@@ -2,7 +2,7 @@ package com.artelier.api.service.impl;
 
 import com.artelier.api.dto.projection.TopProductProjection;
 import com.artelier.api.dto.response.StatsResponse;
-import com.artelier.api.entity.enums.OrderStatus;
+import com.artelier.api.enums.OrderStatus;
 import com.artelier.api.repository.OrderItemRepository;
 import com.artelier.api.repository.OrderRepository;
 import com.artelier.api.repository.ProductRepository;
@@ -46,9 +46,9 @@ public class StatsServiceImpl implements StatsService {
 
         StatsResponse.TopProduct topProduct = top.isEmpty() ? null :
                 new StatsResponse.TopProduct(
-                        top.get(0).getId(),
-                        top.get(0).getName(),
-                        top.get(0).getTotalSold()
+                        top.getFirst().getId(),
+                        top.getFirst().getName(),
+                        top.getFirst().getTotalSold()
                 );
 
         return new StatsResponse(totalSales, pendingOrders, activeProducts, topProduct);

@@ -1,7 +1,7 @@
 package com.artelier.api.entity;
 
 import com.artelier.api.dto.request.ProductRequest;
-import com.artelier.api.entity.enums.StockType;
+import com.artelier.api.enums.StockType;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.SQLRestriction;

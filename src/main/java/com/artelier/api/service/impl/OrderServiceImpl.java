@@ -6,8 +6,9 @@ import com.artelier.api.entity.Order;
 import com.artelier.api.entity.OrderItem;
 import com.artelier.api.entity.Product;
 import com.artelier.api.entity.User;
-import com.artelier.api.entity.enums.OrderStatus;
-import com.artelier.api.entity.enums.StockType;
+import com.artelier.api.enums.OrderStatus;
+import com.artelier.api.enums.Role;
+import com.artelier.api.enums.StockType;
 import com.artelier.api.exception.ArtelierException;
 import com.artelier.api.mapper.OrderMapper;
 import com.artelier.api.repository.OrderRepository;
@@ -31,6 +32,7 @@ public class OrderServiceImpl implements OrderService {
     private final OrderMapper orderMapper;
     private final UserRepository userRepository;
     private final ProductRepository productRepository;
+    private final String ORDER_NOT_FOUND = "Order not found";
 
     @Override
     @Transactional
@@ -44,6 +46,7 @@ public class OrderServiceImpl implements OrderService {
                 .status(OrderStatus.PENDING_PAYMENT)
                 .shippingAddress(request.getShippingAddress())
                 .notes(request.getNotes())
+                .customerEmail(userEmail)
                 .build();
 
         BigDecimal subtotal = BigDecimal.ZERO;
@@ -100,14 +103,20 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<OrderResponse> getAllOrders(OrderStatus status, Pageable pageable) {
+    public Page<OrderResponse> getAllOrders(OrderStatus status, Pageable pageable, User requester) {
+
+        boolean isAdmin = requester.getRole() == Role.ADMIN;
 
         Page<Order> orders;
 
-        if (status != null) {
-            orders = orderRepository.findByStatus(status, pageable);
+        if (isAdmin) {
+            orders = (status != null)
+                    ? orderRepository.findByStatus(status, pageable)
+                    : orderRepository.findAll(pageable);
         } else {
-            orders = orderRepository.findAll(pageable);
+            orders = (status != null)
+                    ? orderRepository.findByUserAndStatus(requester, status, pageable)
+                    : orderRepository.findByUser(requester, pageable);
         }
 
         return orders.map(orderMapper::toResponse);
@@ -115,27 +124,67 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
-    public OrderResponse updateOrderStatus(UUID orderId, OrderStatus status) {
+    public OrderResponse updateOrderStatus(UUID orderId, OrderStatus newStatus, User requester) {
 
         Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> ArtelierException.notFound("Order not found"));
+                .orElseThrow(() -> ArtelierException.notFound(ORDER_NOT_FOUND));
 
-        if (order.getStatus() == OrderStatus.CANCELLED) {
-            throw ArtelierException.badRequest("Cannot modify a cancelled order");
+        boolean isAdmin = requester.getRole() == Role.ADMIN;
+
+        if (isAdmin) {
+            if (newStatus != OrderStatus.SHIPPED) {
+                throw ArtelierException.badRequest("Admin can only transition orders to SHIPPED");
+            }
+            if (order.getStatus() != OrderStatus.PAID) {
+                throw ArtelierException.badRequest(
+                        "Order must be in PAID status to be shipped, current status: " + order.getStatus()
+                );
+            }
+        } else {
+            if (newStatus != OrderStatus.CANCELLED) {
+                throw ArtelierException.badRequest("You can only cancel your order");
+            }
+            if (order.getStatus() != OrderStatus.PENDING_PAYMENT) {
+                throw ArtelierException.badRequest(
+                        "Order can only be cancelled when pending payment, current status: " + order.getStatus()
+                );
+            }
+            if (!order.getUser().getId().equals(requester.getId())) {
+                throw ArtelierException.forbidden("Access denied to this order");
+            }
         }
 
-        order.setStatus(status);
+        order.setStatus(newStatus);
 
         return orderMapper.toResponse(order);
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public OrderResponse getOrderById(UUID orderId) {
+    @Transactional
+    public void updateOrderStatusInternal(UUID orderId, OrderStatus newStatus) {
         Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> ArtelierException.notFound("Order not found"));
+                .orElseThrow(() -> ArtelierException.notFound(ORDER_NOT_FOUND));
 
-        return  orderMapper.toResponse(order);
+        if (order.getStatus() == OrderStatus.CANCELLED) {
+            throw ArtelierException.badRequest("Cannot modify a cancelled order");
+        }
 
+        order.setStatus(newStatus);
+        orderRepository.save(order);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public OrderResponse getOrderById(UUID orderId, User requester) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> ArtelierException.notFound(ORDER_NOT_FOUND));
+
+        boolean isAdmin = requester.getRole() == Role.ADMIN;
+
+        if (!isAdmin && !order.getUser().getId().equals(requester.getId())) {
+            throw ArtelierException.forbidden("Access denied to this order");
+        }
+
+        return orderMapper.toResponse(order);
     }
 }

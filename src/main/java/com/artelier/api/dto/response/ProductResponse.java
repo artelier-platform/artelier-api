@@ -1,6 +1,6 @@
 package com.artelier.api.dto.response;
 
-import com.artelier.api.entity.enums.StockType;
+import com.artelier.api.enums.StockType;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
@@ -102,7 +102,7 @@ public class ProductResponse {
     private StockType stockType;
 
     @Schema(
-            description = "Available stock quantity (only relevant when stockType is FINITE)",
+            description = "Available stock quantity. Relevant only for AVAILABLE and MADE_TO_ORDER stock types",
             example = "10",
             minimum = "0",
             nullable = true
