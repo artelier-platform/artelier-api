@@ -1,19 +1,18 @@
 -- ============================================================
 -- V1: Users + Refresh Tokens
--- Matches: User.java, RefreshToken.java
 -- ============================================================
 
 CREATE TYPE user_role_enum AS ENUM ('ADMIN', 'BUYER');
 
 CREATE TABLE users (
-                       id            UUID             PRIMARY KEY DEFAULT gen_random_uuid(),
-                       email         VARCHAR(255)     NOT NULL UNIQUE,
-                       password_hash VARCHAR(255)     NOT NULL,
+                       id            UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+                       email         VARCHAR(255) NOT NULL UNIQUE,
+                       password_hash VARCHAR(255),
                        full_name     VARCHAR(255),
                        phone         VARCHAR(20),
-                       role          user_role_enum   NOT NULL DEFAULT 'BUYER',
-                       banned        BOOLEAN          NOT NULL DEFAULT FALSE,
-                       created_at    TIMESTAMPTZ      NOT NULL DEFAULT now()
+                       role          user_role_enum NOT NULL DEFAULT 'BUYER',
+                       banned        BOOLEAN      NOT NULL DEFAULT FALSE,
+                       created_at    TIMESTAMPTZ  NOT NULL DEFAULT now()
 );
 
 CREATE INDEX idx_users_email ON users(email);
@@ -26,5 +25,6 @@ CREATE TABLE refresh_tokens (
                                 created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_refresh_tokens_user_id  ON refresh_tokens(user_id);
-CREATE INDEX idx_refresh_tokens_expires  ON refresh_tokens(expires_at);
+CREATE INDEX idx_refresh_tokens_user_id ON refresh_tokens(user_id);
+CREATE INDEX idx_refresh_tokens_expires ON refresh_tokens(expires_at);
+
