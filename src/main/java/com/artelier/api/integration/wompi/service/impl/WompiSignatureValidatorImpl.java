@@ -1,4 +1,8 @@
+<<<<<<<< HEAD:src/main/java/com/artelier/api/integration/wompi/service/impl/WompiSignatureValidatorImpl.java
 package com.artelier.api.integration.wompi.service.impl;
+========
+package com.artelier.api.service.impl;
+>>>>>>>> 493ef90ce0783b4fb42cd179f1526896659860ff:src/main/java/com/artelier/api/service/impl/WompiSignatureValidatorImpl.java
 
 import com.artelier.api.dto.request.PaymentWebhookRequest;
 import com.artelier.api.integration.wompi.service.WompiSignatureValidator;
