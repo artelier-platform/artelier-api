@@ -102,7 +102,7 @@ public class ProductResponse {
     private StockType stockType;
 
     @Schema(
-            description = "Available stock quantity (only relevant when stockType is FINITE)",
+            description = "Available stock quantity. Relevant only for AVAILABLE and MADE_TO_ORDER stock types",
             example = "10",
             minimum = "0",
             nullable = true

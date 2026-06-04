@@ -1,11 +1,14 @@
 package com.artelier.api.service.impl;
 
+import com.artelier.api.dto.request.ImageMetadata;
 import com.artelier.api.dto.request.ProductRequest;
 import com.artelier.api.dto.response.ProductResponse;
 import com.artelier.api.entity.Category;
 import com.artelier.api.entity.Product;
 import com.artelier.api.entity.ProductImage;
 import com.artelier.api.exception.ArtelierException;
+import com.artelier.api.integration.cloudinary.dto.response.CloudinaryUploadResponse;
+import com.artelier.api.integration.cloudinary.service.CloudinaryService;
 import com.artelier.api.mapper.ProductMapper;
 import com.artelier.api.repository.CategoryRepository;
 import com.artelier.api.repository.ProductRepository;
@@ -27,11 +30,18 @@ import java.util.UUID;
 @Service
 public class ProductServiceImpl implements ProductService {
 
-    private final String PRODUCT_NOT_FOUND = "Product not found";
-    private final String CATEGORY_NOT_FOUND = "Category not found";
+    // static final: these are constants, not injectable dependencies.
+    // @AllArgsConstructor excludes fields with inline initializers, but
+    // declaring them static makes the intent unambiguous to SonarCloud and readers.
+    private static final String PRODUCT_NOT_FOUND = "Product not found";
+    private static final String CATEGORY_NOT_FOUND = "Category not found";
+
     private final CategoryRepository categoryRepository;
     private final ProductRepository productRepository;
     private final ProductMapper productMapper;
+    private final CloudinaryService cloudinaryService;
+
+    // ─── Reads ────────────────────────────────────────────────────────────────
 
     @Cacheable(
             value = "products",
@@ -50,22 +60,24 @@ public class ProductServiceImpl implements ProductService {
     @Transactional(readOnly = true)
     @Override
     public ProductResponse getBySlug(String slug) {
-        Product product = productRepository.findBySlug(slug)
-                .orElseThrow(() -> ArtelierException.notFound(PRODUCT_NOT_FOUND));
-
-        return productMapper.toResponse(product);
+        return productMapper.toResponse(
+                productRepository.findBySlug(slug)
+                        .orElseThrow(() -> ArtelierException.notFound(PRODUCT_NOT_FOUND))
+        );
     }
+
+    // ─── Writes ───────────────────────────────────────────────────────────────
 
     @CacheEvict(value = "products", allEntries = true)
     @Transactional
     @Override
-    public ProductResponse createProduct(ProductRequest request, List<MultipartFile> images)  {
+    public ProductResponse createProduct(ProductRequest request, List<MultipartFile> images) {
         Category category = categoryRepository.findById(request.getCategoryId())
                 .orElseThrow(() -> ArtelierException.notFound(CATEGORY_NOT_FOUND));
 
         Product product = Product.create(request, category, generateSlug(request.getName()));
 
-        attachImages(product, request);
+        attachImages(product, images, request.getImages());
 
         return productMapper.toResponse(productRepository.save(product));
     }
@@ -73,7 +85,7 @@ public class ProductServiceImpl implements ProductService {
     @CacheEvict(value = "products", allEntries = true)
     @Transactional
     @Override
-    public ProductResponse updateProduct(UUID productId, ProductRequest request) {
+    public ProductResponse updateProduct(UUID productId, ProductRequest request, List<MultipartFile> images) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> ArtelierException.notFound(PRODUCT_NOT_FOUND));
 
@@ -91,8 +103,10 @@ public class ProductServiceImpl implements ProductService {
         product.setIsActive(request.getIsActive());
         product.setCategory(category);
 
-        product.getImages().clear();
-        attachImages(product, request);
+        if (images != null && !images.isEmpty()) {
+            product.getImages().clear();
+            attachImages(product, images, request.getImages());
+        }
 
         return productMapper.toResponse(productRepository.save(product));
     }
@@ -120,25 +134,49 @@ public class ProductServiceImpl implements ProductService {
         return productMapper.toResponse(productRepository.save(product));
     }
 
+    // ─── Helpers ──────────────────────────────────────────────────────────────
 
-    private void attachImages(Product product, ProductRequest request) {
-        if (request.getImages() == null || request.getImages().isEmpty()) {
-            return;
+    /**
+     * Uploads each file to Cloudinary and attaches the resulting images to the product.
+     *
+     * <p>Files and metadata are coordinated by index: {@code files.get(i)} corresponds
+     * to {@code metadata.get(i)}. If {@code metadata} is null, shorter than {@code files},
+     * or missing at a given index, safe defaults are applied:
+     * <ul>
+     *   <li>The first image defaults to {@code isPrimary = true}.</li>
+     *   <li>{@code sortOrder} defaults to the file's index position.</li>
+     * </ul>
+     *
+     * @param product  the product to attach images to
+     * @param files    multipart files uploaded by the client
+     * @param metadata display metadata (isPrimary, sortOrder) sent alongside the files
+     */
+    private void attachImages(Product product, List<MultipartFile> files, List<ImageMetadata> metadata) {
+        if (files == null || files.isEmpty()) return;
+
+        for (int i = 0; i < files.size(); i++) {
+            CloudinaryUploadResponse uploaded = cloudinaryService.upload(files.get(i));
+
+            boolean isPrimary;
+            int sortOrder;
+
+            if (metadata != null && i < metadata.size()) {
+                ImageMetadata meta = metadata.get(i);
+                isPrimary = Boolean.TRUE.equals(meta.getIsPrimary());
+                sortOrder = meta.getSortOrder() != null ? meta.getSortOrder() : i;
+            } else {
+                isPrimary = (i == 0);
+                sortOrder = i;
+            }
+
+            ProductImage img = new ProductImage();
+            img.setUrl(uploaded.getSecureUrl());
+            img.setCloudinaryId(uploaded.getPublicId());
+            img.setIsPrimary(isPrimary);
+            img.setSortOrder(sortOrder);
+            img.setProduct(product);
+            product.getImages().add(img);
         }
-
-        List<ProductImage> images = request.getImages().stream()
-                .map(imgReq -> {
-                    ProductImage img = new ProductImage();
-                    img.setUrl(imgReq.getUrl());
-                    img.setCloudinaryId(imgReq.getCloudinaryId());
-                    img.setIsPrimary(imgReq.getIsPrimary());
-                    img.setSortOrder(imgReq.getSortOrder());
-                    img.setProduct(product);
-                    return img;
-                })
-                .toList();
-
-        product.getImages().addAll(images);
     }
 
     private String generateSlug(String name) {

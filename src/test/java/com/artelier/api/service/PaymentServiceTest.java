@@ -1,23 +1,23 @@
 package com.artelier.api.service;
 
 import com.artelier.api.dto.request.PaymentRequest;
-import com.artelier.api.entity.User;
-import com.artelier.api.integration.wompi.dto.request.CardPaymentMethod;
 import com.artelier.api.dto.request.PaymentWebhookRequest;
-import com.artelier.api.integration.wompi.dto.request.WompiAcceptanceTokens;
-import com.artelier.api.integration.wompi.dto.response.WompiTransactionResponse;
-import com.artelier.api.integration.wompi.service.WompiAcceptanceTokenService;
-import com.artelier.api.integration.wompi.service.WompiClient;
-import com.artelier.api.integration.wompi.util.WompiIntegritySignatureUtil;
 import com.artelier.api.dto.response.PaymentResponse;
 import com.artelier.api.entity.Order;
 import com.artelier.api.entity.Payment;
+import com.artelier.api.entity.User;
 import com.artelier.api.enums.OrderStatus;
-import com.artelier.api.integration.wompi.enums.PaymentMethod;
-import com.artelier.api.integration.wompi.enums.PaymentStatus;
 import com.artelier.api.exception.InvalidOrderStateException;
 import com.artelier.api.exception.OrderNotFoundException;
 import com.artelier.api.exception.PaymentNotFoundException;
+import com.artelier.api.integration.wompi.dto.request.CardPaymentMethod;
+import com.artelier.api.integration.wompi.dto.request.WompiAcceptanceTokens;
+import com.artelier.api.integration.wompi.dto.response.WompiTransactionResponse;
+import com.artelier.api.integration.wompi.enums.PaymentMethod;
+import com.artelier.api.integration.wompi.enums.PaymentStatus;
+import com.artelier.api.integration.wompi.service.WompiAcceptanceTokenService;
+import com.artelier.api.integration.wompi.service.WompiClient;
+import com.artelier.api.integration.wompi.util.WompiIntegritySignatureUtil;
 import com.artelier.api.mapper.PaymentMapper;
 import com.artelier.api.repository.OrderRepository;
 import com.artelier.api.repository.PaymentRepository;
@@ -25,7 +25,8 @@ import com.artelier.api.service.impl.PaymentServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.*;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -52,7 +53,6 @@ class PaymentServiceTest {
 
     @BeforeEach
     void setUp() {
-        // @Value no se inyecta con @InjectMocks — hay que setearlo manualmente
         ReflectionTestUtils.setField(service, "redirectUrl",
                 "http://localhost:3000/payment/result");
     }
@@ -63,8 +63,7 @@ class PaymentServiceTest {
     void shouldConfirmPaymentAsApproved() {
         Payment payment = buildPayment(PaymentStatus.PENDING, OrderStatus.PROCESSING);
 
-        when(paymentRepository.findByReference("ref-123"))
-                .thenReturn(Optional.of(payment));
+        when(paymentRepository.findByReference("ref-123")).thenReturn(Optional.of(payment));
         when(paymentRepository.save(payment)).thenReturn(payment);
 
         service.confirmPayment(buildWebhookRequest("ref-123", "APPROVED", "NEQUI"));
@@ -72,7 +71,7 @@ class PaymentServiceTest {
         assertEquals(PaymentStatus.APPROVED, payment.getStatus());
         assertNotNull(payment.getPaidAt());
         assertEquals(PaymentMethod.NEQUI, payment.getPaymentMethod());
-        verify(orderService).updateOrderStatus(payment.getOrder().getId(), OrderStatus.PAID);
+        verify(orderService).updateOrderStatusInternal(payment.getOrder().getId(), OrderStatus.PAID);
         verify(paymentRepository).save(payment);
     }
 
@@ -80,53 +79,50 @@ class PaymentServiceTest {
     void shouldConfirmPaymentAsDeclined() {
         Payment payment = buildPayment(PaymentStatus.PENDING, OrderStatus.PROCESSING);
 
-        when(paymentRepository.findByReference("ref-123"))
-                .thenReturn(Optional.of(payment));
+        when(paymentRepository.findByReference("ref-123")).thenReturn(Optional.of(payment));
         when(paymentRepository.save(payment)).thenReturn(payment);
 
         service.confirmPayment(buildWebhookRequest("ref-123", "DECLINED", "PSE"));
 
         assertEquals(PaymentStatus.DECLINED, payment.getStatus());
         assertNull(payment.getPaidAt());
-        verify(orderService).updateOrderStatus(payment.getOrder().getId(), OrderStatus.PENDING_PAYMENT);
+        verify(orderService).updateOrderStatusInternal(
+                payment.getOrder().getId(), OrderStatus.PENDING_PAYMENT);
     }
 
     @Test
     void shouldConfirmPaymentAsVoided() {
         Payment payment = buildPayment(PaymentStatus.PENDING, OrderStatus.PROCESSING);
 
-        when(paymentRepository.findByReference("ref-123"))
-                .thenReturn(Optional.of(payment));
+        when(paymentRepository.findByReference("ref-123")).thenReturn(Optional.of(payment));
         when(paymentRepository.save(payment)).thenReturn(payment);
 
         service.confirmPayment(buildWebhookRequest("ref-123", "VOIDED", "CARD"));
 
-        // VOIDED es un estado propio, no ERROR
         assertEquals(PaymentStatus.VOIDED, payment.getStatus());
-        verify(orderService).updateOrderStatus(payment.getOrder().getId(), OrderStatus.PENDING_PAYMENT);
+        verify(orderService).updateOrderStatusInternal(
+                payment.getOrder().getId(), OrderStatus.PENDING_PAYMENT);
     }
 
     @Test
-    void shouldSetStatusErrorForTrulyUnknownStatus() {
+    void shouldSetStatusErrorForUnknownWompiStatus() {
         Payment payment = buildPayment(PaymentStatus.PENDING, OrderStatus.PROCESSING);
 
-        when(paymentRepository.findByReference("ref-123"))
-                .thenReturn(Optional.of(payment));
+        when(paymentRepository.findByReference("ref-123")).thenReturn(Optional.of(payment));
         when(paymentRepository.save(payment)).thenReturn(payment);
 
-        // status que Wompi no debería mandar pero que el switch default captura
         service.confirmPayment(buildWebhookRequest("ref-123", "UNKNOWN_STATUS", "CARD"));
 
         assertEquals(PaymentStatus.ERROR, payment.getStatus());
-        verify(orderService).updateOrderStatus(payment.getOrder().getId(), OrderStatus.PENDING_PAYMENT);
+        verify(orderService).updateOrderStatusInternal(
+                payment.getOrder().getId(), OrderStatus.PENDING_PAYMENT);
     }
 
     @Test
     void shouldSetPaymentMethodNullForUnknownMethod() {
         Payment payment = buildPayment(PaymentStatus.PENDING, OrderStatus.PROCESSING);
 
-        when(paymentRepository.findByReference("ref-123"))
-                .thenReturn(Optional.of(payment));
+        when(paymentRepository.findByReference("ref-123")).thenReturn(Optional.of(payment));
         when(paymentRepository.save(payment)).thenReturn(payment);
 
         service.confirmPayment(buildWebhookRequest("ref-123", "APPROVED", "CRYPTO"));
@@ -138,8 +134,7 @@ class PaymentServiceTest {
     void shouldSkipConfirmIfAlreadyApproved() {
         Payment payment = buildPayment(PaymentStatus.APPROVED, OrderStatus.PAID);
 
-        when(paymentRepository.findByReference("ref-123"))
-                .thenReturn(Optional.of(payment));
+        when(paymentRepository.findByReference("ref-123")).thenReturn(Optional.of(payment));
 
         service.confirmPayment(buildWebhookRequest("ref-123", "APPROVED", "NEQUI"));
 
@@ -151,8 +146,31 @@ class PaymentServiceTest {
     void shouldSkipConfirmIfAlreadyDeclined() {
         Payment payment = buildPayment(PaymentStatus.DECLINED, OrderStatus.PROCESSING);
 
-        when(paymentRepository.findByReference("ref-123"))
-                .thenReturn(Optional.of(payment));
+        when(paymentRepository.findByReference("ref-123")).thenReturn(Optional.of(payment));
+
+        service.confirmPayment(buildWebhookRequest("ref-123", "APPROVED", "NEQUI"));
+
+        verify(paymentRepository, never()).save(any());
+        verifyNoInteractions(orderService);
+    }
+
+    @Test
+    void shouldSkipConfirmIfAlreadyVoided() {
+        Payment payment = buildPayment(PaymentStatus.VOIDED, OrderStatus.PROCESSING);
+
+        when(paymentRepository.findByReference("ref-123")).thenReturn(Optional.of(payment));
+
+        service.confirmPayment(buildWebhookRequest("ref-123", "APPROVED", "NEQUI"));
+
+        verify(paymentRepository, never()).save(any());
+        verifyNoInteractions(orderService);
+    }
+
+    @Test
+    void shouldSkipConfirmIfAlreadyError() {
+        Payment payment = buildPayment(PaymentStatus.ERROR, OrderStatus.PROCESSING);
+
+        when(paymentRepository.findByReference("ref-123")).thenReturn(Optional.of(payment));
 
         service.confirmPayment(buildWebhookRequest("ref-123", "APPROVED", "NEQUI"));
 
@@ -162,24 +180,20 @@ class PaymentServiceTest {
 
     @Test
     void shouldThrowIfPaymentNotFoundOnConfirm() {
-        when(paymentRepository.findByReference("ref-xyz"))
-                .thenReturn(Optional.empty());
+        when(paymentRepository.findByReference("ref-xyz")).thenReturn(Optional.empty());
 
-        PaymentWebhookRequest request = buildWebhookRequest("ref-xyz", "APPROVED", "NEQUI");
         assertThrows(PaymentNotFoundException.class,
-                () -> service.confirmPayment(request));
+                () -> service.confirmPayment(buildWebhookRequest("ref-xyz", "APPROVED", "NEQUI")));
     }
 
     @Test
     void shouldThrowIfOrderNotInProcessingOnConfirm() {
         Payment payment = buildPayment(PaymentStatus.PENDING, OrderStatus.CANCELLED);
 
-        when(paymentRepository.findByReference("ref-123"))
-                .thenReturn(Optional.of(payment));
+        when(paymentRepository.findByReference("ref-123")).thenReturn(Optional.of(payment));
 
-        PaymentWebhookRequest request = buildWebhookRequest("ref-123", "APPROVED", "NEQUI");
         assertThrows(InvalidOrderStateException.class,
-                () -> service.confirmPayment(request));
+                () -> service.confirmPayment(buildWebhookRequest("ref-123", "APPROVED", "NEQUI")));
     }
 
     // ─── createPendingPayment ─────────────────────────────────────────────────
@@ -191,27 +205,23 @@ class PaymentServiceTest {
         Payment saved = new Payment();
         PaymentResponse response = new PaymentResponse();
 
-        when(paymentRepository.findActiveByOrderId(orderId))
-                .thenReturn(Optional.empty());
-        when(orderRepository.findById(orderId))
-                .thenReturn(Optional.of(order));
+        when(paymentRepository.findActiveByOrderId(orderId)).thenReturn(Optional.empty());
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
         when(acceptanceTokenService.getTokens())
                 .thenReturn(new WompiAcceptanceTokens("acceptance_token", "personal_auth"));
         when(signatureUtil.generate(anyString(), anyLong(), anyString()))
                 .thenReturn("test-signature");
         when(wompiClient.createTransaction(any()))
-                .thenReturn(buildWompiTransactionResponse("wompi_tx_001"));
-        when(paymentRepository.save(any()))
-                .thenReturn(saved);
-        when(paymentMapper.toResponse(saved))
-                .thenReturn(response);
+                .thenReturn(buildWompiTransactionResponse());
+        when(paymentRepository.save(any())).thenReturn(saved);
+        when(paymentMapper.toResponse(saved)).thenReturn(response);
 
         PaymentResponse result = service.createPendingPayment(
                 orderId, buildCardRequest(), "192.168.1.1");
 
         assertNotNull(result);
         verify(paymentRepository).save(any());
-        verify(orderService).updateOrderStatus(orderId, OrderStatus.PROCESSING);
+        verify(orderService).updateOrderStatusInternal(orderId, OrderStatus.PROCESSING);
         verify(wompiClient).createTransaction(any());
     }
 
@@ -221,10 +231,8 @@ class PaymentServiceTest {
         Payment existing = new Payment();
         PaymentResponse response = new PaymentResponse();
 
-        when(paymentRepository.findActiveByOrderId(orderId))
-                .thenReturn(Optional.of(existing));
-        when(paymentMapper.toResponse(existing))
-                .thenReturn(response);
+        when(paymentRepository.findActiveByOrderId(orderId)).thenReturn(Optional.of(existing));
+        when(paymentMapper.toResponse(existing)).thenReturn(response);
 
         PaymentResponse result = service.createPendingPayment(
                 orderId, buildCardRequest(), "192.168.1.1");
@@ -239,14 +247,11 @@ class PaymentServiceTest {
     void shouldThrowIfOrderNotFoundOnCreate() {
         UUID orderId = UUID.randomUUID();
 
-        when(paymentRepository.findActiveByOrderId(orderId))
-                .thenReturn(Optional.empty());
-        when(orderRepository.findById(orderId))
-                .thenReturn(Optional.empty());
+        when(paymentRepository.findActiveByOrderId(orderId)).thenReturn(Optional.empty());
+        when(orderRepository.findById(orderId)).thenReturn(Optional.empty());
 
-        PaymentRequest request = buildCardRequest();
         assertThrows(OrderNotFoundException.class,
-                () -> service.createPendingPayment(orderId, request, "192.168.1.1"));
+                () -> service.createPendingPayment(orderId, buildCardRequest(), "192.168.1.1"));
     }
 
     @Test
@@ -254,14 +259,11 @@ class PaymentServiceTest {
         UUID orderId = UUID.randomUUID();
         Order order = buildOrder(orderId, OrderStatus.CANCELLED);
 
-        when(paymentRepository.findActiveByOrderId(orderId))
-                .thenReturn(Optional.empty());
-        when(orderRepository.findById(orderId))
-                .thenReturn(Optional.of(order));
+        when(paymentRepository.findActiveByOrderId(orderId)).thenReturn(Optional.empty());
+        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
 
-        PaymentRequest request = buildCardRequest();
         assertThrows(InvalidOrderStateException.class,
-                () -> service.createPendingPayment(orderId, request, "192.168.1.1"));
+                () -> service.createPendingPayment(orderId, buildCardRequest(), "192.168.1.1"));
     }
 
     // ─── findByOrderId ────────────────────────────────────────────────────────
@@ -272,22 +274,17 @@ class PaymentServiceTest {
         Payment payment = new Payment();
         PaymentResponse response = new PaymentResponse();
 
-        when(paymentRepository.findByOrderId(orderId))
-                .thenReturn(Optional.of(payment));
-        when(paymentMapper.toResponse(payment))
-                .thenReturn(response);
+        when(paymentRepository.findByOrderId(orderId)).thenReturn(Optional.of(payment));
+        when(paymentMapper.toResponse(payment)).thenReturn(response);
 
-        PaymentResponse result = service.findByOrderId(orderId);
-
-        assertNotNull(result);
+        assertNotNull(service.findByOrderId(orderId));
     }
 
     @Test
     void shouldThrowIfPaymentNotFoundByOrderId() {
         UUID orderId = UUID.randomUUID();
 
-        when(paymentRepository.findByOrderId(orderId))
-                .thenReturn(Optional.empty());
+        when(paymentRepository.findByOrderId(orderId)).thenReturn(Optional.empty());
 
         assertThrows(PaymentNotFoundException.class,
                 () -> service.findByOrderId(orderId));
@@ -296,10 +293,9 @@ class PaymentServiceTest {
     // ─── helpers ─────────────────────────────────────────────────────────────
 
     private Payment buildPayment(PaymentStatus paymentStatus, OrderStatus orderStatus) {
-        Order order = buildOrder(UUID.randomUUID(), orderStatus);
         Payment payment = new Payment();
         payment.setStatus(paymentStatus);
-        payment.setOrder(order);
+        payment.setOrder(buildOrder(UUID.randomUUID(), orderStatus));
         return payment;
     }
 
@@ -326,10 +322,10 @@ class PaymentServiceTest {
         return request;
     }
 
-    private WompiTransactionResponse buildWompiTransactionResponse(String txId) {
+    private WompiTransactionResponse buildWompiTransactionResponse() {
         WompiTransactionResponse.TransactionData txData =
                 new WompiTransactionResponse.TransactionData();
-        txData.setId(txId);
+        txData.setId("wompi_tx_001");
         txData.setStatus("PENDING");
 
         WompiTransactionResponse response = new WompiTransactionResponse();

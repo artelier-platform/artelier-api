@@ -5,6 +5,7 @@ import com.artelier.api.dto.request.LoginRequest;
 import com.artelier.api.dto.request.RegisterRequest;
 import com.artelier.api.dto.request.RefreshRequest;
 import com.artelier.api.dto.response.AuthResponse;
+import com.artelier.api.repository.UserRepository;
 import com.artelier.api.security.JwtUtil;
 import com.artelier.api.service.AuthService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -38,6 +39,9 @@ class AuthControllerTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @MockitoBean
+    private UserRepository userRepository;
 
     @Test
     void shouldLoginSuccessfully() throws Exception {

@@ -4,6 +4,7 @@ import com.artelier.api.config.JacksonTestConfig;
 import com.artelier.api.config.SecurityConfig;
 import com.artelier.api.dto.request.CategoryRequest;
 import com.artelier.api.dto.response.CategoryResponse;
+import com.artelier.api.repository.UserRepository;
 import com.artelier.api.security.JwtUtil;
 import com.artelier.api.service.CategoryService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -39,6 +40,9 @@ class CategoryControllerTest {
 
     @MockitoBean
     private JwtUtil jwtUtil;
+
+    @MockitoBean
+    private UserRepository userRepository;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 

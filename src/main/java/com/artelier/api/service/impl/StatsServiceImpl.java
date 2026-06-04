@@ -46,9 +46,9 @@ public class StatsServiceImpl implements StatsService {
 
         StatsResponse.TopProduct topProduct = top.isEmpty() ? null :
                 new StatsResponse.TopProduct(
-                        top.get(0).getId(),
-                        top.get(0).getName(),
-                        top.get(0).getTotalSold()
+                        top.getFirst().getId(),
+                        top.getFirst().getName(),
+                        top.getFirst().getTotalSold()
                 );
 
         return new StatsResponse(totalSales, pendingOrders, activeProducts, topProduct);

@@ -1,8 +1,7 @@
 package com.artelier.api.security;
 
 import com.artelier.api.entity.User;
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
+import org.jspecify.annotations.NonNull;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -10,23 +9,34 @@ import org.springframework.security.core.userdetails.UserDetails;
 import java.util.Collection;
 import java.util.List;
 
-@RequiredArgsConstructor
-public class UserPrincipal implements UserDetails {
+public record UserPrincipal(User user) implements UserDetails {
 
-    @Getter
-    private final User user;
-
-    @Override
-    public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
+    /**
+     * Compatibility method for existing code that expects a getter.
+     */
+    public User getUser() {
+        return user;
     }
 
     @Override
-    public String getPassword() { return user.getPasswordHash(); }
+    public @NonNull Collection<? extends GrantedAuthority> getAuthorities() {
+        return List.of(
+                new SimpleGrantedAuthority("ROLE_" + user.getRole().name())
+        );
+    }
 
     @Override
-    public String getUsername() { return user.getEmail(); }
+    public @NonNull String getPassword() {
+        return user.getPasswordHash();
+    }
 
     @Override
-    public boolean isAccountNonLocked() { return !user.isBanned(); }
+    public @NonNull String getUsername() {
+        return user.getEmail();
+    }
+
+    @Override
+    public boolean isAccountNonLocked() {
+        return !user.isBanned();
+    }
 }

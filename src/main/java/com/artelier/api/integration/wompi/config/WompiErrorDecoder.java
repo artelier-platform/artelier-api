@@ -43,7 +43,7 @@ public class WompiErrorDecoder implements ErrorDecoder {
 
         return switch (response.status()) {
             case 401 -> new WompiException("INVALID_KEY", "Wompi authentication failed. Check your API keys.", HttpStatus.INTERNAL_SERVER_ERROR);
-            case 422 -> new WompiException(wompiCode, message, HttpStatus.UNPROCESSABLE_ENTITY);
+            case 422 -> new WompiException(wompiCode, message, HttpStatus.UNPROCESSABLE_CONTENT);
             case 404 -> new WompiException("NOT_FOUND", "Wompi resource not found.", HttpStatus.NOT_FOUND);
             default  -> new WompiException(wompiCode, message, status);
         };

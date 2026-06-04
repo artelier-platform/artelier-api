@@ -42,7 +42,12 @@ public class ProductRequest {
     @NotNull
     private StockType stockType;
 
-    @Schema(example = "10")
+    @Schema(
+            description = "Stock quantity. Required for AVAILABLE and MADE_TO_ORDER stock types",
+            example = "10",
+            minimum = "0",
+            nullable = true
+    )
     @Min(0)
     private Integer stockQuantity;
 

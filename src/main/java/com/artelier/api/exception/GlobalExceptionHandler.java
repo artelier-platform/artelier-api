@@ -16,6 +16,7 @@ import java.util.Map;
 
 @Slf4j
 @RestControllerAdvice
+@SuppressWarnings("unused")
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(ArtelierException.class)

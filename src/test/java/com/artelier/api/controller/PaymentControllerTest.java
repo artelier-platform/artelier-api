@@ -8,6 +8,7 @@ import com.artelier.api.integration.wompi.dto.response.WompiFinancialInstitution
 import com.artelier.api.integration.wompi.enums.PaymentStatus;
 import com.artelier.api.exception.OrderNotFoundException;
 import com.artelier.api.exception.PaymentNotFoundException;
+import com.artelier.api.repository.UserRepository;
 import com.artelier.api.security.JwtUtil;
 import com.artelier.api.service.PaymentService;
 import com.artelier.api.integration.wompi.service.WompiSignatureValidator;
@@ -50,6 +51,9 @@ class PaymentControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @MockitoBean
+    private UserRepository userRepository;
+
     // ─── POST /webhook ────────────────────────────────────────────────────────
 
     @Test
@@ -57,7 +61,7 @@ class PaymentControllerTest {
         when(signatureValidator.isValid(any())).thenReturn(true);
         doNothing().when(paymentService).confirmPayment(any());
 
-        mockMvc.perform(post("/api/v1/payments/webhook")
+        mockMvc.perform(post("/payments/webhook")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
                                 buildWebhookRequest("transaction.updated"))))
@@ -70,7 +74,7 @@ class PaymentControllerTest {
     void shouldReturn401WhenSignatureIsInvalid() throws Exception {
         when(signatureValidator.isValid(any())).thenReturn(false);
 
-        mockMvc.perform(post("/api/v1/payments/webhook")
+        mockMvc.perform(post("/payments/webhook")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
                                 buildWebhookRequest("transaction.updated"))))
@@ -83,7 +87,7 @@ class PaymentControllerTest {
     void shouldReturn200AndIgnoreNonTransactionUpdatedEvent() throws Exception {
         when(signatureValidator.isValid(any())).thenReturn(true);
 
-        mockMvc.perform(post("/api/v1/payments/webhook")
+        mockMvc.perform(post("/payments/webhook")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
                                 buildWebhookRequest("transaction.created"))))
@@ -103,12 +107,12 @@ class PaymentControllerTest {
                 eq(orderId), any(PaymentRequest.class), anyString()))
                 .thenReturn(response);
 
-        mockMvc.perform(post("/api/v1/payments/orders/" + orderId)
+        mockMvc.perform(post("/payments/orders/" + orderId)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(buildCardPaymentRequestJson()))   // <-- JSON crudo
+                        .content(buildCardPaymentRequestJson()))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.orderId").value(orderId.toString()))
-                .andExpect(jsonPath("$.status").value("PENDING"));
+                .andExpect(jsonPath("$.data.orderId").value(orderId.toString()))
+                .andExpect(jsonPath("$.data.status").value("PENDING"));
     }
 
     @Test
@@ -119,9 +123,9 @@ class PaymentControllerTest {
                 eq(orderId), any(PaymentRequest.class), anyString()))
                 .thenThrow(new OrderNotFoundException(orderId));
 
-        mockMvc.perform(post("/api/v1/payments/orders/" + orderId)
+        mockMvc.perform(post("/payments/orders/" + orderId)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(buildCardPaymentRequestJson()))   // <-- JSON crudo
+                        .content(buildCardPaymentRequestJson()))
                 .andExpect(status().isNotFound());
     }
 
@@ -129,7 +133,7 @@ class PaymentControllerTest {
     void shouldReturn400WhenPaymentRequestBodyIsMissing() throws Exception {
         UUID orderId = UUID.randomUUID();
 
-        mockMvc.perform(post("/api/v1/payments/orders/" + orderId)
+        mockMvc.perform(post("/payments/orders/" + orderId)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest());
 
@@ -145,7 +149,7 @@ class PaymentControllerTest {
                 eq(orderId), any(PaymentRequest.class), anyString()))
                 .thenReturn(response);
 
-        mockMvc.perform(post("/api/v1/payments/orders/" + orderId)
+        mockMvc.perform(post("/payments/orders/" + orderId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                         {
@@ -156,7 +160,7 @@ class PaymentControllerTest {
                         }
                         """))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.status").value("PENDING"));
+                .andExpect(jsonPath("$.data.status").value("PENDING"));
     }
 
     @Test
@@ -168,7 +172,7 @@ class PaymentControllerTest {
                 eq(orderId), any(PaymentRequest.class), anyString()))
                 .thenReturn(response);
 
-        mockMvc.perform(post("/api/v1/payments/orders/" + orderId)
+        mockMvc.perform(post("/payments/orders/" + orderId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                         {
@@ -187,7 +191,7 @@ class PaymentControllerTest {
                         }
                         """))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.status").value("PENDING"));
+                .andExpect(jsonPath("$.data.status").value("PENDING"));
     }
 
     // ─── GET /orders/{orderId} ────────────────────────────────────────────────
@@ -199,10 +203,10 @@ class PaymentControllerTest {
 
         when(paymentService.findByOrderId(orderId)).thenReturn(response);
 
-        mockMvc.perform(get("/api/v1/payments/orders/" + orderId))
+        mockMvc.perform(get("/payments/orders/" + orderId))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.orderId").value(orderId.toString()))
-                .andExpect(jsonPath("$.status").value("APPROVED"));
+                .andExpect(jsonPath("$.data.orderId").value(orderId.toString()))
+                .andExpect(jsonPath("$.data.status").value("APPROVED"));
     }
 
     @Test
@@ -212,9 +216,9 @@ class PaymentControllerTest {
 
         when(paymentService.findByOrderId(orderId)).thenReturn(response);
 
-        mockMvc.perform(get("/api/v1/payments/orders/" + orderId))
+        mockMvc.perform(get("/payments/orders/" + orderId))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("PENDING"));
+                .andExpect(jsonPath("$.data.status").value("PENDING"));
     }
 
     @Test
@@ -224,7 +228,7 @@ class PaymentControllerTest {
         when(paymentService.findByOrderId(orderId))
                 .thenThrow(new PaymentNotFoundException(orderId));
 
-        mockMvc.perform(get("/api/v1/payments/orders/" + orderId))
+        mockMvc.perform(get("/payments/orders/" + orderId))
                 .andExpect(status().isNotFound());
     }
 
@@ -238,19 +242,19 @@ class PaymentControllerTest {
 
         when(paymentService.getFinancialInstitutions()).thenReturn(List.of(bank));
 
-        mockMvc.perform(get("/api/v1/payments/financial-institutions"))
+        mockMvc.perform(get("/payments/financial-institutions"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].financial_institution_code").value("1007"))
-                .andExpect(jsonPath("$[0].financial_institution_name").value("BANCOLOMBIA"));
+                .andExpect(jsonPath("$.data[0].financial_institution_code").value("1007"))
+                .andExpect(jsonPath("$.data[0].financial_institution_name").value("BANCOLOMBIA"));
     }
 
     @Test
     void shouldReturnEmptyListWhenNoInstitutions() throws Exception {
         when(paymentService.getFinancialInstitutions()).thenReturn(List.of());
 
-        mockMvc.perform(get("/api/v1/payments/financial-institutions"))
+        mockMvc.perform(get("/payments/financial-institutions"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isEmpty());
+                .andExpect(jsonPath("$.data").isEmpty());
     }
 
     // ─── helpers ─────────────────────────────────────────────────────────────

@@ -75,13 +75,20 @@ public class WompiIntegritySignatureUtil {
      *         Java runtime environment.
      */
     public String generate(String reference, Long amountInCents, String currency) {
+        if (reference == null || reference.isBlank())
+            throw new IllegalArgumentException("The reference cannot be null or empty");
+        if (amountInCents == null || amountInCents <= 0)
+            throw new IllegalArgumentException("amountInCents must be greater than 0");
+        if (currency == null || currency.isBlank())
+            throw new IllegalArgumentException("currency cannot be null or empty");
+
         String raw = reference + amountInCents + currency + integritySecret;
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] hash = digest.digest(raw.getBytes(StandardCharsets.UTF_8));
             return HexFormat.of().formatHex(hash);
         } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 no disponible", e);
+            throw new IllegalStateException("SHA-256 not available", e);
         }
     }
 }

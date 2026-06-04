@@ -16,7 +16,7 @@ public class CardPaymentMethod implements PaymentMethodBody {
 
     @Schema(description = "Payment method type.", example = "CARD",
             requiredMode = Schema.RequiredMode.REQUIRED)
-    private String type = "CARD";
+    private final String type = "CARD";
 
     @NotBlank
     @Schema(description = "Card token generated previously by Wompi.",

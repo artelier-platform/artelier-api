@@ -35,6 +35,7 @@ public class WompiSignatureValidatorImpl implements WompiSignatureValidator {
 
             return computed.equals(sig.getChecksum());
         } catch (Exception e) {
+            log.error("Error validating Wompi webhook signature: {}", e.getMessage(), e);
             return false;
         }
     }

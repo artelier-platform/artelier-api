@@ -19,9 +19,6 @@ public interface WompiClient {
     @PostMapping("/transactions")
     WompiTransactionResponse createTransaction(@RequestBody WompiTransactionRequest request);
 
-    @GetMapping("/transactions/{transactionId}")
-    WompiTransactionResponse getTransaction(@PathVariable("transactionId") String transactionId);
-
     @GetMapping("/pse/financial_institutions")
     WompiFinancialInstitutionsListResponse getFinancialInstitutions();
 }
