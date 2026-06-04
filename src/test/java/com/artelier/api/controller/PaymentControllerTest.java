@@ -252,6 +252,62 @@ class PaymentControllerTest {
                 .andExpect(jsonPath("$.data").isEmpty());
     }
 
+    @Test
+    void shouldUseForwardedIpWhenHeaderExists() throws Exception {
+        UUID orderId = UUID.randomUUID();
+
+        PaymentResponse response =
+                buildPaymentResponse(orderId, PaymentStatus.PENDING);
+
+        when(paymentService.createPendingPayment(
+                eq(orderId),
+                any(PaymentRequest.class),
+                anyString()))
+                .thenReturn(response);
+
+        mockMvc.perform(post("/payments/orders/" + orderId)
+                        .header("X-Forwarded-For", "203.0.113.1, 10.0.0.1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(buildCardPaymentRequestJson()))
+                .andExpect(status().isCreated());
+
+        verify(paymentService)
+                .createPendingPayment(
+                        eq(orderId),
+                        any(PaymentRequest.class),
+                        eq("203.0.113.1")
+                );
+    }
+
+    @Test
+    void shouldUseRemoteAddressWhenForwardedHeaderMissing() throws Exception {
+        UUID orderId = UUID.randomUUID();
+
+        PaymentResponse response =
+                buildPaymentResponse(orderId, PaymentStatus.PENDING);
+
+        when(paymentService.createPendingPayment(
+                eq(orderId),
+                any(PaymentRequest.class),
+                anyString()))
+                .thenReturn(response);
+
+        mockMvc.perform(post("/payments/orders/" + orderId)
+                        .with(req -> {
+                            req.setRemoteAddr("127.0.0.1");
+                            return req;
+                        })
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(buildCardPaymentRequestJson()))
+                .andExpect(status().isCreated());
+
+        verify(paymentService)
+                .createPendingPayment(
+                        eq(orderId),
+                        any(PaymentRequest.class),
+                        eq("127.0.0.1")
+                );
+    }
 
     private String buildCardPaymentRequestJson() {
         return """
