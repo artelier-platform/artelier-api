@@ -5,6 +5,7 @@ import com.artelier.api.dto.request.RefreshRequest;
 import com.artelier.api.dto.request.RegisterRequest;
 import com.artelier.api.dto.response.AppResponse;
 import com.artelier.api.dto.response.AuthResponse;
+import com.artelier.api.dto.response.swagger.SwaggerResponses;
 import com.artelier.api.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -109,7 +110,7 @@ public class AuthController {
             description = "Authentication successful",
             content = @Content(
                     mediaType = MediaType.APPLICATION_JSON_VALUE,
-                    schema = @Schema(implementation = AppResponse.class),
+                    schema = @Schema(implementation = SwaggerResponses.AuthResponseBody.class),
                     examples = @ExampleObject(
                             name = "login-success",
                             value = """
@@ -206,10 +207,7 @@ public class AuthController {
             LoginRequest request
     ) {
         AuthResponse auth = authService.login(request);
-
-        return ResponseEntity.ok(
-                AppResponse.success("Login successful", auth)
-        );
+        return ResponseEntity.ok(AppResponse.success("Login successful", auth));
     }
 
     @Operation(
@@ -244,7 +242,7 @@ public class AuthController {
             description = "User registered successfully",
             content = @Content(
                     mediaType = MediaType.APPLICATION_JSON_VALUE,
-                    schema = @Schema(implementation = AppResponse.class),
+                    schema = @Schema(implementation = SwaggerResponses.AuthResponseBody.class),
                     examples = @ExampleObject(
                             name = "registration-success",
                             value = """
@@ -285,18 +283,11 @@ public class AuthController {
     )
     @PostMapping("/register")
     public ResponseEntity<AppResponse<AuthResponse>> register(
-            @Valid
-            @RequestBody RegisterRequest request
+            @Valid @RequestBody RegisterRequest request
     ) {
         AuthResponse auth = authService.register(request);
-
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(
-                        AppResponse.success(
-                                "User registered successfully",
-                                auth
-                        )
-                );
+                .body(AppResponse.success("User registered successfully", auth));
     }
 
     @Operation(
@@ -327,27 +318,20 @@ public class AuthController {
     )
     @ApiResponse(
             responseCode = "200",
-            description = "Token refreshed successfully"
+            description = "Token refreshed successfully",
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                    schema = @Schema(implementation = SwaggerResponses.AuthResponseBody.class)
+            )
     )
-    @ApiResponse(
-            responseCode = "401",
-            description = "Invalid or expired refresh token"
-    )
-    @ApiResponse(
-            responseCode = "403",
-            description = "User account is banned"
-    )
+    @ApiResponse(responseCode = "401", description = "Invalid or expired refresh token")
+    @ApiResponse(responseCode = "403", description = "User account is banned")
     @PostMapping("/refresh")
     public ResponseEntity<AppResponse<AuthResponse>> refresh(
             @RequestBody RefreshRequest request
     ) {
-
-        AuthResponse auth =
-                authService.refresh(request.getRefreshToken());
-
-        return ResponseEntity.ok(
-                AppResponse.success("Token refreshed", auth)
-        );
+        AuthResponse auth = authService.refresh(request.getRefreshToken());
+        return ResponseEntity.ok(AppResponse.success("Token refreshed", auth));
     }
 
     @Operation(
@@ -389,19 +373,12 @@ public class AuthController {
                     )
             )
     )
-    @ApiResponse(
-            responseCode = "401",
-            description = "Invalid or expired refresh token"
-    )
+    @ApiResponse(responseCode = "401", description = "Invalid or expired refresh token")
     @PostMapping("/logout")
     public ResponseEntity<AppResponse<Void>> logout(
             @RequestBody RefreshRequest request
     ) {
-
         authService.logout(request.getRefreshToken());
-
-        return ResponseEntity.ok(
-                AppResponse.success("Logged out successfully")
-        );
+        return ResponseEntity.ok(AppResponse.success("Logged out successfully"));
     }
 }
