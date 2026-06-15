@@ -2,6 +2,7 @@ package com.artelier.api.controller;
 
 import com.artelier.api.dto.response.AppResponse;
 import com.artelier.api.dto.response.StatsResponse;
+import com.artelier.api.dto.response.swagger.SwaggerResponses;
 import com.artelier.api.service.StatsService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -79,7 +80,7 @@ public class StatsController {
             description = "Statistics retrieved successfully",
             content = @Content(
                     mediaType = MediaType.APPLICATION_JSON_VALUE,
-                    schema = @Schema(implementation = AppResponse.class),
+                    schema = @Schema(implementation = SwaggerResponses.StatsResponseBody.class),
                     examples = {
                             @ExampleObject(
                                     name = "dashboard-stats",
@@ -126,14 +127,9 @@ public class StatsController {
             content = @Content(
                     mediaType = MediaType.APPLICATION_JSON_VALUE,
                     schema = @Schema(implementation = AppResponse.class),
-                    examples = @ExampleObject(
-                            value = """
-                                {
-                                  "success": false,
-                                  "message": "Unauthorized"
-                                }
-                                """
-                    )
+                    examples = @ExampleObject(value = """
+                        { "success": false, "message": "Unauthorized" }
+                        """)
             )
     )
     @ApiResponse(
@@ -142,22 +138,12 @@ public class StatsController {
             content = @Content(
                     mediaType = MediaType.APPLICATION_JSON_VALUE,
                     schema = @Schema(implementation = AppResponse.class),
-                    examples = @ExampleObject(
-                            value = """
-                                {
-                                  "success": false,
-                                  "message": "Access Denied"
-                                }
-                                """
-                    )
+                    examples = @ExampleObject(value = """
+                        { "success": false, "message": "Access Denied" }
+                        """)
             )
     )
     public ResponseEntity<AppResponse<StatsResponse>> getStats() {
-        return ResponseEntity.ok(
-                AppResponse.success(
-                        "Statistics retrieved",
-                        statsService.getStats()
-                )
-        );
+        return ResponseEntity.ok(AppResponse.success("Statistics retrieved", statsService.getStats()));
     }
 }
