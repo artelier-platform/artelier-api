@@ -3,6 +3,7 @@ package com.artelier.api.controller;
 import com.artelier.api.dto.request.CategoryRequest;
 import com.artelier.api.dto.response.AppResponse;
 import com.artelier.api.dto.response.CategoryResponse;
+import com.artelier.api.dto.response.swagger.SwaggerResponses;
 import com.artelier.api.service.CategoryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.*;
@@ -58,7 +59,6 @@ public class CategoryController {
 
     private final CategoryService categoryService;
 
-
     @Operation(
             summary = "Get all categories",
             description = """
@@ -86,7 +86,7 @@ public class CategoryController {
             description = "Categories retrieved successfully",
             content = @Content(
                     mediaType = MediaType.APPLICATION_JSON_VALUE,
-                    schema = @Schema(implementation = AppResponse.class),
+                    schema = @Schema(implementation = SwaggerResponses.CategoryListResponseBody.class),
                     examples = @ExampleObject(
                             name = "categories-list",
                             value = """
@@ -131,13 +131,7 @@ public class CategoryController {
     )
     @GetMapping
     public ResponseEntity<AppResponse<List<CategoryResponse>>> getAll() {
-
-        return ResponseEntity.ok(
-                AppResponse.success(
-                        "Categories fetched",
-                        categoryService.getAll()
-                )
-        );
+        return ResponseEntity.ok(AppResponse.success("Categories fetched", categoryService.getAll()));
     }
 
     @Operation(
@@ -181,7 +175,7 @@ public class CategoryController {
             description = "Category created successfully",
             content = @Content(
                     mediaType = MediaType.APPLICATION_JSON_VALUE,
-                    schema = @Schema(implementation = AppResponse.class),
+                    schema = @Schema(implementation = SwaggerResponses.CategoryResponseBody.class),
                     examples = @ExampleObject(
                             name = "category-created",
                             value = """
@@ -205,15 +199,9 @@ public class CategoryController {
             content = @Content(
                     mediaType = MediaType.APPLICATION_JSON_VALUE,
                     schema = @Schema(implementation = AppResponse.class),
-                    examples = @ExampleObject(
-                            name = "forbidden",
-                            value = """
-                                {
-                                  "success": false,
-                                  "message": "Access denied"
-                                }
-                                """
-                    )
+                    examples = @ExampleObject(name = "forbidden", value = """
+                        { "success": false, "message": "Access denied" }
+                        """)
             )
     )
     @ApiResponse(
@@ -222,36 +210,22 @@ public class CategoryController {
             content = @Content(
                     mediaType = MediaType.APPLICATION_JSON_VALUE,
                     schema = @Schema(implementation = AppResponse.class),
-                    examples = @ExampleObject(
-                            name = "duplicate-slug",
-                            value = """
-                                {
-                                  "success": false,
-                                  "message": "Slug already in use"
-                                }
-                                """
-                    )
+                    examples = @ExampleObject(name = "duplicate-slug", value = """
+                        { "success": false, "message": "Slug already in use" }
+                        """)
             )
     )
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<AppResponse<CategoryResponse>> create(
-
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
                     description = "Category data",
                     required = true,
                     content = @Content(schema = @Schema(implementation = CategoryRequest.class))
             )
-            @Valid
-            @RequestBody CategoryRequest request
+            @Valid @RequestBody CategoryRequest request
     ) {
-
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(
-                        AppResponse.success(
-                                "Category created",
-                                categoryService.create(request)
-                        )
-                );
+                .body(AppResponse.success("Category created", categoryService.create(request)));
     }
 }
