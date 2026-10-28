@@ -8,7 +8,6 @@ import java.util.UUID;
 
 public interface BannerRepository extends JpaRepository<Banner, UUID> {
 
-    List<Banner> findByIsActiveTrueOrderBySortOrderAsc();
+    List<Banner> findByIsActiveTrue();
 
-    List<Banner> findAllByOrderBySortOrderAsc();
 }

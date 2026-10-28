@@ -10,8 +10,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import java.util.Map;
 
 @Slf4j
@@ -36,6 +38,28 @@ public class GlobalExceptionHandler {
                 .toList();
         return ResponseEntity.badRequest()
                 .body(new AppResponse<>(false, "Validation failed", errors));
+    }
+
+    /**
+     * Handles path variables or query parameters that cannot be converted to the
+     * expected type (e.g. an invalid UUID or a non-numeric int).
+     * The rejected value is intentionally not echoed back to the client.
+     */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<AppResponse<Void>> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        log.warn("Type mismatch for parameter '{}': {}", ex.getName(), ex.getMessage());
+        return ResponseEntity.badRequest()
+                .body(AppResponse.error("Invalid value for parameter '" + ex.getName() + "'"));
+    }
+
+    /**
+     * Handles required query parameters that are not present in the request.
+     */
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<AppResponse<Void>> handleMissingParameter(MissingServletRequestParameterException ex) {
+        log.warn("Missing required parameter '{}'", ex.getParameterName());
+        return ResponseEntity.badRequest()
+                .body(AppResponse.error("Missing required parameter '" + ex.getParameterName() + "'"));
     }
 
     @ExceptionHandler(ConstraintViolationException.class)

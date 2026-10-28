@@ -19,7 +19,7 @@ public final class PageSanitizer {
                 .filter(o -> allowedSort.contains(o.getProperty()))
                 .toList();
         Sort sort = orders.isEmpty() ? fallback : Sort.by(orders);
-        int size = Math.min(Math.max(pageable.getPageSize(), 1), MAX_SIZE);
+        int size = Math.clamp(pageable.getPageSize(), 1, MAX_SIZE);
         return PageRequest.of(pageable.getPageNumber(), size, sort);
     }
 }

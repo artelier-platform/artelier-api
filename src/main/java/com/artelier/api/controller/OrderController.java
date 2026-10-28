@@ -54,7 +54,6 @@ import java.util.UUID;
         | Endpoint | ADMIN | BUYER |
         |----------|-------|-------|
         | `POST /orders` | — | Creates a new order |
-        | `GET /orders/my` | Own orders | Own orders |
         | `GET /orders` | **All** orders in the system | Only their own orders |
         | `PATCH /{id}/status` | `PAID → SHIPPED` | `PENDING_PAYMENT → CANCELLED` (own order) |
         | `GET /{id}` | Any order | Own orders only |
