@@ -5,9 +5,12 @@ import com.artelier.api.dto.request.ItemBannerRequest;
 import com.artelier.api.dto.request.ItemBannerUpdateRequest;
 import com.artelier.api.dto.response.BannerResponse;
 import com.artelier.api.dto.response.ItemBannerResponse;
+import com.artelier.api.dto.response.UploadedAssetResponse;
 import com.artelier.api.entity.Banner;
 import com.artelier.api.entity.ItemBanner;
 import com.artelier.api.exception.ArtelierException;
+import com.artelier.api.integration.cloudinary.dto.response.CloudinaryUploadResponse;
+import com.artelier.api.integration.cloudinary.service.CloudinaryService;
 import com.artelier.api.mapper.BannerMapper;
 import com.artelier.api.mapper.ItemBannerMapper;
 import com.artelier.api.repository.BannerRepository;
@@ -17,6 +20,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Instant;
 import java.util.List;
@@ -25,6 +31,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(org.mockito.junit.jupiter.MockitoExtension.class)
@@ -33,6 +40,7 @@ class BannerServiceTest {
     @Mock private BannerRepository bannerRepository;
     @Mock private BannerMapper bannerMapper;
     @Mock private ItemBannerMapper itemBannerMapper;
+    @Mock private CloudinaryService cloudinaryService;
 
     @InjectMocks
     private BannerServiceImpl service;
@@ -42,11 +50,21 @@ class BannerServiceTest {
     // =========================
 
     private ItemBanner buildItem(int order, String title) {
+        return buildItem(
+                order, title,
+                "artelier/banners/" + title,
+                null
+        );
+    }
+
+    private ItemBanner buildItem(int order, String title, String imageId, String modelId) {
         return ItemBanner.builder()
                 .id(UUID.randomUUID())
                 .sortOrder(order)
                 .title(title)
                 .backgroundImageUrl("https://res.cloudinary.com/artelier/image/upload/" + title + ".jpg")
+                .backgroundImageCloudinaryId(imageId)
+                .model3dPublicId(modelId)
                 .build();
     }
 
@@ -75,12 +93,16 @@ class BannerServiceTest {
     }
 
     private ItemBannerUpdateRequest updateRequest() {
+        return updateRequest("artelier/banners/new", "artelier/banners/model");
+    }
+
+    private ItemBannerUpdateRequest updateRequest(String imageId, String modelId) {
         return new ItemBannerUpdateRequest(
                 "New title", true,
                 "https://res.cloudinary.com/artelier/image/upload/new.jpg",
-                "artelier/banners/new",
+                imageId,
                 "https://res.cloudinary.com/artelier/raw/upload/model.glb",
-                "artelier/banners/model",
+                modelId,
                 "New description", true,
                 "Shop now", "https://artelier.com/shop", true
         );
@@ -104,6 +126,22 @@ class BannerServiceTest {
         return banner.getItems().stream().map(ItemBanner::getSortOrder).toList();
     }
 
+    private void stubBannerForUpdate(Banner banner) {
+        when(bannerRepository.findByIdForUpdate(banner.getId())).thenReturn(Optional.of(banner));
+    }
+
+    private void stubBanner(Banner banner) {
+        when(bannerRepository.findById(banner.getId())).thenReturn(Optional.of(banner));
+    }
+
+    private MockMultipartFile pngFile() {
+        byte[] png = {
+                (byte) 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A,
+                0x00, 0x00, 0x00, 0x0D
+        };
+        return new MockMultipartFile("file", "banner.png", "image/png", png);
+    }
+
     // =========================
     // getActiveBanners
     // =========================
@@ -116,7 +154,7 @@ class BannerServiceTest {
         UUID id = UUID.randomUUID();
         Instant createdAt = Instant.now();
 
-        when(bannerRepository.findByIsActiveTrue()).thenReturn(List.of(banner));
+        when(bannerRepository.findByIsActiveTrueOrderByCreatedAtAsc()).thenReturn(List.of(banner));
         when(bannerMapper.toResponse(banner))
                 .thenReturn(new BannerResponse(id, true, createdAt, List.of(active, inactive)));
 
@@ -132,7 +170,7 @@ class BannerServiceTest {
     void shouldExcludeBannersWithoutActiveItems() {
         Banner banner = buildBanner();
 
-        when(bannerRepository.findByIsActiveTrue()).thenReturn(List.of(banner));
+        when(bannerRepository.findByIsActiveTrueOrderByCreatedAtAsc()).thenReturn(List.of(banner));
         when(bannerMapper.toResponse(banner))
                 .thenReturn(new BannerResponse(
                         UUID.randomUUID(), true, Instant.now(),
@@ -146,12 +184,94 @@ class BannerServiceTest {
 
     @Test
     void shouldReturnEmptyListWhenThereAreNoActiveBanners() {
-        when(bannerRepository.findByIsActiveTrue()).thenReturn(List.of());
+        when(bannerRepository.findByIsActiveTrueOrderByCreatedAtAsc()).thenReturn(List.of());
 
         List<BannerResponse> result = service.getActiveBanners();
 
         assertTrue(result.isEmpty());
         verify(bannerMapper, never()).toResponse(any());
+    }
+
+    // =========================
+    // getAllBanners
+    // =========================
+
+    @Test
+    void shouldReturnAllBannersIncludingInactiveOnes() {
+        Banner active = buildBanner(buildItem(1, "A"));
+        Banner inactive = buildBanner(buildItem(1, "B"));
+        inactive.setActive(false);
+
+        BannerResponse activeResponse = new BannerResponse(
+                active.getId(), true, Instant.now(), List.of(itemResponse(true, 1)));
+        BannerResponse inactiveResponse = new BannerResponse(
+                inactive.getId(), false, Instant.now(), List.of(itemResponse(false, 1)));
+
+        when(bannerRepository.findAllByOrderByCreatedAtDesc()).thenReturn(List.of(active, inactive));
+        when(bannerMapper.toResponse(active)).thenReturn(activeResponse);
+        when(bannerMapper.toResponse(inactive)).thenReturn(inactiveResponse);
+
+        List<BannerResponse> result = service.getAllBanners();
+
+        // Unlike the public listing, nothing is filtered out
+        assertEquals(List.of(activeResponse, inactiveResponse), result);
+    }
+
+    @Test
+    void shouldReturnEmptyListWhenThereAreNoBanners() {
+        when(bannerRepository.findAllByOrderByCreatedAtDesc()).thenReturn(List.of());
+
+        assertTrue(service.getAllBanners().isEmpty());
+    }
+
+    // =========================
+    // uploadImage
+    // =========================
+
+    @Test
+    void shouldUploadImageToTheBannersFolder() {
+        MockMultipartFile file = pngFile();
+        CloudinaryUploadResponse uploaded = mock(CloudinaryUploadResponse.class);
+
+        when(uploaded.getSecureUrl()).thenReturn("https://res.cloudinary.com/artelier/image/upload/banners/x.png");
+        when(uploaded.getPublicId()).thenReturn("artelier/banners/x");
+        when(cloudinaryService.upload(file, "artelier/banners")).thenReturn(uploaded);
+
+        UploadedAssetResponse result = service.uploadImage(file);
+
+        assertEquals("https://res.cloudinary.com/artelier/image/upload/banners/x.png", result.url());
+        assertEquals("artelier/banners/x", result.publicId());
+        verify(cloudinaryService).upload(file, "artelier/banners");
+    }
+
+    @Test
+    void shouldRejectUploadWhenFileIsEmpty() {
+        MockMultipartFile empty = new MockMultipartFile("file", "empty.png", "image/png", new byte[0]);
+
+        assertThrows(ArtelierException.class, () -> service.uploadImage(empty));
+
+        verifyNoInteractions(cloudinaryService);
+    }
+
+    @Test
+    void shouldRejectUploadWhenFileIsNotAnImage() {
+        MockMultipartFile text = new MockMultipartFile(
+                "file", "notes.txt", "text/plain", "hello world".getBytes());
+
+        assertThrows(ArtelierException.class, () -> service.uploadImage(text));
+
+        verifyNoInteractions(cloudinaryService);
+    }
+
+    @Test
+    void shouldRejectUploadWhenContentTypeLiesAboutTheBytes() {
+        // Says image/png but the bytes are plain text
+        MockMultipartFile fake = new MockMultipartFile(
+                "file", "fake.png", "image/png", "this is not a png at all".getBytes());
+
+        assertThrows(ArtelierException.class, () -> service.uploadImage(fake));
+
+        verifyNoInteractions(cloudinaryService);
     }
 
     // =========================
@@ -163,12 +283,11 @@ class BannerServiceTest {
         Banner banner = buildBanner();
         assertTrue(banner.isActive());
 
-        when(bannerRepository.findById(banner.getId())).thenReturn(Optional.of(banner));
+        stubBanner(banner);
 
         service.updateBannerStatus(banner.getId(), false);
 
         assertFalse(banner.isActive());
-        verify(bannerRepository).save(banner);
     }
 
     @Test
@@ -177,8 +296,6 @@ class BannerServiceTest {
 
         assertThrows(ArtelierException.class,
                 () -> service.updateBannerStatus(UUID.randomUUID(), true));
-
-        verify(bannerRepository, never()).save(any());
     }
 
     // =========================
@@ -190,24 +307,24 @@ class BannerServiceTest {
         ItemBanner item = buildItem(1, "A");
         Banner banner = buildBanner(item);
 
-        when(bannerRepository.findById(banner.getId())).thenReturn(Optional.of(banner));
+        stubBanner(banner);
 
         service.updateItemStatus(banner.getId(), item.getId(), false);
 
         assertFalse(item.isActive());
-        verify(bannerRepository).save(banner);
     }
 
     @Test
     void shouldThrowIfItemNotFoundOnUpdateItemStatus() {
-        Banner banner = buildBanner(buildItem(1, "A"));
+        ItemBanner item = buildItem(1, "A");
+        Banner banner = buildBanner(item);
 
-        when(bannerRepository.findById(banner.getId())).thenReturn(Optional.of(banner));
+        stubBanner(banner);
 
         assertThrows(ArtelierException.class,
                 () -> service.updateItemStatus(banner.getId(), UUID.randomUUID(), false));
 
-        verify(bannerRepository, never()).save(any());
+        assertTrue(item.isActive());
     }
 
     @Test
@@ -216,8 +333,6 @@ class BannerServiceTest {
 
         assertThrows(ArtelierException.class,
                 () -> service.updateItemStatus(UUID.randomUUID(), UUID.randomUUID(), true));
-
-        verify(bannerRepository, never()).save(any());
     }
 
     // =========================
@@ -228,7 +343,7 @@ class BannerServiceTest {
     void shouldDeleteBanner() {
         Banner banner = buildBanner();
 
-        when(bannerRepository.findById(banner.getId())).thenReturn(Optional.of(banner));
+        stubBannerForUpdate(banner);
 
         service.deleteBanner(banner.getId());
 
@@ -236,13 +351,86 @@ class BannerServiceTest {
     }
 
     @Test
+    void shouldDeleteTheCloudinaryAssetsOfEveryItemWhenDeletingABanner() {
+        Banner banner = buildBanner(
+                buildItem(1, "A", "artelier/banners/a", null),
+                buildItem(2, "B", "artelier/banners/b", "artelier/banners/b-model")
+        );
+
+        stubBannerForUpdate(banner);
+
+        service.deleteBanner(banner.getId());
+
+        verify(bannerRepository).delete(banner);
+        verify(cloudinaryService).delete("artelier/banners/a", CloudinaryService.RESOURCE_IMAGE);
+        verify(cloudinaryService).delete("artelier/banners/b", CloudinaryService.RESOURCE_IMAGE);
+        verify(cloudinaryService).delete("artelier/banners/b-model", CloudinaryService.RESOURCE_RAW);
+        verifyNoMoreInteractions(cloudinaryService);
+    }
+
+    @Test
+    void shouldNotDeleteAssetsOutsideTheBannersFolder() {
+        // A publicId that points to a product image must never be deleted from here
+        Banner banner = buildBanner(
+                buildItem(1, "A", "artelier/products/shoe", "other-folder/model")
+        );
+
+        stubBannerForUpdate(banner);
+
+        service.deleteBanner(banner.getId());
+
+        verify(bannerRepository).delete(banner);
+        verifyNoInteractions(cloudinaryService);
+    }
+
+    @Test
+    void shouldDeleteCloudinaryAssetsOnlyAfterCommit() {
+        Banner banner = buildBanner(buildItem(1, "A", "artelier/banners/a", null));
+
+        stubBannerForUpdate(banner);
+
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            service.deleteBanner(banner.getId());
+
+            // Still inside the transaction: nothing may be deleted yet
+            verifyNoInteractions(cloudinaryService);
+
+            TransactionSynchronizationManager.getSynchronizations()
+                    .forEach(TransactionSynchronization::afterCommit);
+
+            verify(cloudinaryService).delete("artelier/banners/a", CloudinaryService.RESOURCE_IMAGE);
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
+
+    @Test
+    void shouldKeepCloudinaryAssetsWhenTheTransactionDoesNotCommit() {
+        Banner banner = buildBanner(buildItem(1, "A", "artelier/banners/a", null));
+
+        stubBannerForUpdate(banner);
+
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            service.deleteBanner(banner.getId());
+            // Rollback: afterCommit is never invoked
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+
+        verifyNoInteractions(cloudinaryService);
+    }
+
+    @Test
     void shouldThrowIfBannerNotFoundOnDelete() {
-        when(bannerRepository.findById(any())).thenReturn(Optional.empty());
+        when(bannerRepository.findByIdForUpdate(any())).thenReturn(Optional.empty());
 
         assertThrows(ArtelierException.class,
                 () -> service.deleteBanner(UUID.randomUUID()));
 
         verify(bannerRepository, never()).delete(any());
+        verifyNoInteractions(cloudinaryService);
     }
 
     // =========================
@@ -313,7 +501,7 @@ class BannerServiceTest {
         Banner banner = buildBanner(buildItem(1, "A"), buildItem(2, "B"));
         ItemBannerResponse response = itemResponse(true, 3);
 
-        when(bannerRepository.findById(banner.getId())).thenReturn(Optional.of(banner));
+        stubBannerForUpdate(banner);
         when(itemBannerMapper.toResponse(any(ItemBanner.class))).thenReturn(response);
 
         ItemBannerResponse result = service.addItem(banner.getId(), itemRequest(99, "C"));
@@ -328,14 +516,16 @@ class BannerServiceTest {
         assertEquals("C", captor.getValue().getTitle());
         assertSame(banner, captor.getValue().getBanner());
 
-        verify(bannerRepository).save(banner);
+        // flush (not save) so the generated id is available for the response
+        verify(bannerRepository).flush();
+        verify(bannerRepository, never()).save(any());
     }
 
     @Test
     void shouldAddFirstItemWithOrderOne() {
         Banner banner = buildBanner();
 
-        when(bannerRepository.findById(banner.getId())).thenReturn(Optional.of(banner));
+        stubBannerForUpdate(banner);
         when(itemBannerMapper.toResponse(any(ItemBanner.class))).thenReturn(itemResponse(true, 1));
 
         service.addItem(banner.getId(), itemRequest(1, "A"));
@@ -345,12 +535,12 @@ class BannerServiceTest {
 
     @Test
     void shouldThrowIfBannerNotFoundOnAddItem() {
-        when(bannerRepository.findById(any())).thenReturn(Optional.empty());
+        when(bannerRepository.findByIdForUpdate(any())).thenReturn(Optional.empty());
 
         assertThrows(ArtelierException.class,
                 () -> service.addItem(UUID.randomUUID(), itemRequest(1, "A")));
 
-        verify(bannerRepository, never()).save(any());
+        verify(bannerRepository, never()).flush();
     }
 
     // =========================
@@ -362,7 +552,7 @@ class BannerServiceTest {
         Banner banner = buildBanner(buildItem(1, "A"), buildItem(2, "B"));
         ItemBannerResponse response = itemResponse(true, 1);
 
-        when(bannerRepository.findById(banner.getId())).thenReturn(Optional.of(banner));
+        stubBannerForUpdate(banner);
         when(itemBannerMapper.toResponse(any(ItemBanner.class))).thenReturn(response);
 
         ItemBannerResponse result = service.addItem(banner.getId(), itemRequest(1, "NEW"), 1);
@@ -371,14 +561,14 @@ class BannerServiceTest {
         assertEquals(List.of("NEW", "A", "B"), titles(banner));
         assertEquals(List.of(1, 2, 3), orders(banner));
         banner.getItems().forEach(item -> assertSame(banner, item.getBanner()));
-        verify(bannerRepository).save(banner);
+        verify(bannerRepository).flush();
     }
 
     @Test
     void shouldInsertItemInTheMiddle() {
         Banner banner = buildBanner(buildItem(1, "A"), buildItem(2, "B"), buildItem(3, "C"));
 
-        when(bannerRepository.findById(banner.getId())).thenReturn(Optional.of(banner));
+        stubBannerForUpdate(banner);
         when(itemBannerMapper.toResponse(any(ItemBanner.class))).thenReturn(itemResponse(true, 2));
 
         service.addItem(banner.getId(), itemRequest(1, "NEW"), 2);
@@ -391,7 +581,7 @@ class BannerServiceTest {
     void shouldInsertItemAtTheEndWhenOrderIsSizePlusOne() {
         Banner banner = buildBanner(buildItem(1, "A"), buildItem(2, "B"));
 
-        when(bannerRepository.findById(banner.getId())).thenReturn(Optional.of(banner));
+        stubBannerForUpdate(banner);
         when(itemBannerMapper.toResponse(any(ItemBanner.class))).thenReturn(itemResponse(true, 3));
 
         service.addItem(banner.getId(), itemRequest(1, "NEW"), 3);
@@ -404,39 +594,39 @@ class BannerServiceTest {
     void shouldThrowIfInsertOrderIsLessThanOne() {
         Banner banner = buildBanner(buildItem(1, "A"));
 
-        when(bannerRepository.findById(banner.getId())).thenReturn(Optional.of(banner));
+        stubBannerForUpdate(banner);
 
         assertThrows(ArtelierException.class,
                 () -> service.addItem(banner.getId(), itemRequest(1, "NEW"), 0));
 
-        verify(bannerRepository, never()).save(any());
+        verify(bannerRepository, never()).flush();
     }
 
     @Test
     void shouldThrowIfInsertOrderIsGreaterThanSizePlusOne() {
         Banner banner = buildBanner(buildItem(1, "A"));
 
-        when(bannerRepository.findById(banner.getId())).thenReturn(Optional.of(banner));
+        stubBannerForUpdate(banner);
 
         assertThrows(ArtelierException.class,
                 () -> service.addItem(banner.getId(), itemRequest(1, "NEW"), 3));
 
         assertEquals(1, banner.getItems().size());
-        verify(bannerRepository, never()).save(any());
+        verify(bannerRepository, never()).flush();
     }
 
     @Test
     void shouldThrowIfBannerNotFoundOnInsertItem() {
-        when(bannerRepository.findById(any())).thenReturn(Optional.empty());
+        when(bannerRepository.findByIdForUpdate(any())).thenReturn(Optional.empty());
 
         assertThrows(ArtelierException.class,
                 () -> service.addItem(UUID.randomUUID(), itemRequest(1, "A"), 1));
 
-        verify(bannerRepository, never()).save(any());
+        verify(bannerRepository, never()).flush();
     }
 
     // =========================
-    // deleteItem
+    // deleteItem (by itemId)
     // =========================
 
     @Test
@@ -446,130 +636,171 @@ class BannerServiceTest {
         ItemBanner c = buildItem(3, "C");
         Banner banner = buildBanner(a, b, c);
 
-        when(bannerRepository.findById(banner.getId())).thenReturn(Optional.of(banner));
+        stubBannerForUpdate(banner);
 
-        service.deleteItem(banner.getId(), 2);
+        service.deleteItem(banner.getId(), b.getId());
 
         assertEquals(List.of("A", "C"), titles(banner));
         assertEquals(List.of(1, 2), orders(banner));
         assertNull(b.getBanner());
-        verify(bannerRepository).save(banner);
+    }
+
+    @Test
+    void shouldDeleteTheRightItemEvenIfOthersWereReordered() {
+        // The id identifies the item, not its position: a stale position can't hit the wrong one
+        ItemBanner a = buildItem(1, "A");
+        ItemBanner b = buildItem(2, "B");
+        Banner banner = buildBanner(a, b);
+
+        stubBannerForUpdate(banner);
+
+        service.deleteItem(banner.getId(), a.getId());
+
+        assertEquals(List.of("B"), titles(banner));
+        assertEquals(List.of(1), orders(banner));
     }
 
     @Test
     void shouldDeleteTheOnlyItem() {
-        Banner banner = buildBanner(buildItem(1, "A"));
+        ItemBanner only = buildItem(1, "A");
+        Banner banner = buildBanner(only);
 
-        when(bannerRepository.findById(banner.getId())).thenReturn(Optional.of(banner));
+        stubBannerForUpdate(banner);
 
-        service.deleteItem(banner.getId(), 1);
+        service.deleteItem(banner.getId(), only.getId());
 
         assertTrue(banner.getItems().isEmpty());
-        verify(bannerRepository).save(banner);
     }
 
     @Test
-    void shouldThrowIfDeleteOrderIsOutOfRange() {
+    void shouldDeleteTheCloudinaryAssetsOfTheDeletedItem() {
+        ItemBanner a = buildItem(1, "A", "artelier/banners/a", "artelier/banners/a-model");
+        ItemBanner b = buildItem(2, "B", "artelier/banners/b", null);
+        Banner banner = buildBanner(a, b);
+
+        stubBannerForUpdate(banner);
+
+        service.deleteItem(banner.getId(), a.getId());
+
+        verify(cloudinaryService).delete("artelier/banners/a", CloudinaryService.RESOURCE_IMAGE);
+        verify(cloudinaryService).delete("artelier/banners/a-model", CloudinaryService.RESOURCE_RAW);
+        verifyNoMoreInteractions(cloudinaryService); // B's image is untouched
+    }
+
+    @Test
+    void shouldThrowIfItemNotFoundOnDeleteItem() {
         Banner banner = buildBanner(buildItem(1, "A"), buildItem(2, "B"));
 
-        when(bannerRepository.findById(banner.getId())).thenReturn(Optional.of(banner));
+        stubBannerForUpdate(banner);
 
-        assertThrows(ArtelierException.class, () -> service.deleteItem(banner.getId(), 0));
-        assertThrows(ArtelierException.class, () -> service.deleteItem(banner.getId(), 3));
+        assertThrows(ArtelierException.class,
+                () -> service.deleteItem(banner.getId(), UUID.randomUUID()));
 
         assertEquals(2, banner.getItems().size());
-        verify(bannerRepository, never()).save(any());
+        verifyNoInteractions(cloudinaryService);
     }
 
     @Test
     void shouldThrowIfBannerNotFoundOnDeleteItem() {
-        when(bannerRepository.findById(any())).thenReturn(Optional.empty());
+        when(bannerRepository.findByIdForUpdate(any())).thenReturn(Optional.empty());
 
         assertThrows(ArtelierException.class,
-                () -> service.deleteItem(UUID.randomUUID(), 1));
+                () -> service.deleteItem(UUID.randomUUID(), UUID.randomUUID()));
 
-        verify(bannerRepository, never()).save(any());
+        verifyNoInteractions(cloudinaryService);
     }
 
     // =========================
-    // reorderItem
+    // moveItem
     // =========================
 
     @Test
     void shouldMoveItemForward() {
-        Banner banner = buildBanner(buildItem(1, "A"), buildItem(2, "B"), buildItem(3, "C"));
+        ItemBanner a = buildItem(1, "A");
+        Banner banner = buildBanner(a, buildItem(2, "B"), buildItem(3, "C"));
 
-        when(bannerRepository.findById(banner.getId())).thenReturn(Optional.of(banner));
+        stubBannerForUpdate(banner);
 
-        service.reorderItem(banner.getId(), 1, 3);
+        service.moveItem(banner.getId(), a.getId(), 3);
 
         assertEquals(List.of("B", "C", "A"), titles(banner));
         assertEquals(List.of(1, 2, 3), orders(banner));
-        verify(bannerRepository).save(banner);
     }
 
     @Test
     void shouldMoveItemBackward() {
-        Banner banner = buildBanner(buildItem(1, "A"), buildItem(2, "B"), buildItem(3, "C"));
+        ItemBanner c = buildItem(3, "C");
+        Banner banner = buildBanner(buildItem(1, "A"), buildItem(2, "B"), c);
 
-        when(bannerRepository.findById(banner.getId())).thenReturn(Optional.of(banner));
+        stubBannerForUpdate(banner);
 
-        service.reorderItem(banner.getId(), 3, 1);
+        service.moveItem(banner.getId(), c.getId(), 1);
 
         assertEquals(List.of("C", "A", "B"), titles(banner));
         assertEquals(List.of(1, 2, 3), orders(banner));
-        verify(bannerRepository).save(banner);
     }
 
     @Test
-    void shouldDoNothingWhenOldAndNewOrderAreEqual() {
-        Banner banner = buildBanner(buildItem(1, "A"), buildItem(2, "B"));
+    void shouldMoveItemToTheMiddle() {
+        ItemBanner a = buildItem(1, "A");
+        Banner banner = buildBanner(a, buildItem(2, "B"), buildItem(3, "C"), buildItem(4, "D"));
 
-        when(bannerRepository.findById(banner.getId())).thenReturn(Optional.of(banner));
+        stubBannerForUpdate(banner);
 
-        service.reorderItem(banner.getId(), 2, 2);
+        service.moveItem(banner.getId(), a.getId(), 3);
+
+        assertEquals(List.of("B", "C", "A", "D"), titles(banner));
+        assertEquals(List.of(1, 2, 3, 4), orders(banner));
+    }
+
+    @Test
+    void shouldDoNothingWhenItemIsAlreadyAtTheRequestedPosition() {
+        ItemBanner b = buildItem(2, "B");
+        Banner banner = buildBanner(buildItem(1, "A"), b);
+
+        stubBannerForUpdate(banner);
+
+        service.moveItem(banner.getId(), b.getId(), 2);
 
         assertEquals(List.of("A", "B"), titles(banner));
-        verify(bannerRepository, never()).save(any());
+        assertEquals(List.of(1, 2), orders(banner));
     }
 
     @Test
-    void shouldThrowIfReorderOldOrderIsInvalid() {
-        Banner banner = buildBanner(buildItem(1, "A"), buildItem(2, "B"));
+    void shouldThrowIfMoveNewOrderIsOutOfRange() {
+        ItemBanner a = buildItem(1, "A");
+        Banner banner = buildBanner(a, buildItem(2, "B"));
 
-        when(bannerRepository.findById(banner.getId())).thenReturn(Optional.of(banner));
+        stubBannerForUpdate(banner);
 
-        assertThrows(ArtelierException.class, () -> service.reorderItem(banner.getId(), 0, 1));
-        assertThrows(ArtelierException.class, () -> service.reorderItem(banner.getId(), 3, 1));
-
-        verify(bannerRepository, never()).save(any());
-    }
-
-    @Test
-    void shouldThrowIfReorderNewOrderIsInvalid() {
-        Banner banner = buildBanner(buildItem(1, "A"), buildItem(2, "B"));
-
-        when(bannerRepository.findById(banner.getId())).thenReturn(Optional.of(banner));
-
-        assertThrows(ArtelierException.class, () -> service.reorderItem(banner.getId(), 1, 0));
-        assertThrows(ArtelierException.class, () -> service.reorderItem(banner.getId(), 1, 3));
+        assertThrows(ArtelierException.class, () -> service.moveItem(banner.getId(), a.getId(), 0));
+        assertThrows(ArtelierException.class, () -> service.moveItem(banner.getId(), a.getId(), 3));
 
         assertEquals(List.of("A", "B"), titles(banner));
-        verify(bannerRepository, never()).save(any());
     }
 
     @Test
-    void shouldThrowIfBannerNotFoundOnReorder() {
-        when(bannerRepository.findById(any())).thenReturn(Optional.empty());
+    void shouldThrowIfItemNotFoundOnMove() {
+        Banner banner = buildBanner(buildItem(1, "A"), buildItem(2, "B"));
+
+        stubBannerForUpdate(banner);
 
         assertThrows(ArtelierException.class,
-                () -> service.reorderItem(UUID.randomUUID(), 1, 2));
+                () -> service.moveItem(banner.getId(), UUID.randomUUID(), 1));
 
-        verify(bannerRepository, never()).save(any());
+        assertEquals(List.of("A", "B"), titles(banner));
+    }
+
+    @Test
+    void shouldThrowIfBannerNotFoundOnMove() {
+        when(bannerRepository.findByIdForUpdate(any())).thenReturn(Optional.empty());
+
+        assertThrows(ArtelierException.class,
+                () -> service.moveItem(UUID.randomUUID(), UUID.randomUUID(), 1));
     }
 
     // =========================
-    // updateItem
+    // updateItem (by itemId)
     // =========================
 
     @Test
@@ -579,10 +810,10 @@ class BannerServiceTest {
         Banner banner = buildBanner(first, second);
         ItemBannerResponse response = itemResponse(true, 2);
 
-        when(bannerRepository.findById(banner.getId())).thenReturn(Optional.of(banner));
+        stubBanner(banner);
         when(itemBannerMapper.toResponse(second)).thenReturn(response);
 
-        ItemBannerResponse result = service.updateItem(banner.getId(), 2, updateRequest());
+        ItemBannerResponse result = service.updateItem(banner.getId(), second.getId(), updateRequest());
 
         assertSame(response, result);
 
@@ -601,23 +832,78 @@ class BannerServiceTest {
         // The sort order must not change and the other items must stay untouched
         assertEquals(2, second.getSortOrder());
         assertEquals("A", first.getTitle());
-
-        verify(bannerRepository).save(banner);
     }
 
     @Test
-    void shouldThrowIfUpdateItemOrderIsOutOfRange() {
-        Banner banner = buildBanner(buildItem(1, "A"));
+    void shouldDeleteTheReplacedImageFromCloudinary() {
+        ItemBanner item = buildItem(1, "A", "artelier/banners/old", null);
+        Banner banner = buildBanner(item);
 
-        when(bannerRepository.findById(banner.getId())).thenReturn(Optional.of(banner));
+        stubBanner(banner);
+        when(itemBannerMapper.toResponse(item)).thenReturn(itemResponse(true, 1));
+
+        service.updateItem(banner.getId(), item.getId(), updateRequest("artelier/banners/new", null));
+
+        verify(cloudinaryService).delete("artelier/banners/old", CloudinaryService.RESOURCE_IMAGE);
+        verifyNoMoreInteractions(cloudinaryService);
+    }
+
+    @Test
+    void shouldDeleteTheReplacedModelFromCloudinaryAsRaw() {
+        ItemBanner item = buildItem(1, "A", "artelier/banners/img", "artelier/banners/old-model");
+        Banner banner = buildBanner(item);
+
+        stubBanner(banner);
+        when(itemBannerMapper.toResponse(item)).thenReturn(itemResponse(true, 1));
+
+        service.updateItem(banner.getId(), item.getId(),
+                updateRequest("artelier/banners/img", "artelier/banners/new-model"));
+
+        verify(cloudinaryService).delete("artelier/banners/old-model", CloudinaryService.RESOURCE_RAW);
+        verifyNoMoreInteractions(cloudinaryService); // the image did not change
+    }
+
+    @Test
+    void shouldDeleteTheOldAssetWhenItIsRemovedFromTheItem() {
+        // The update drops the 3D model (null id): the old file is no longer used
+        ItemBanner item = buildItem(1, "A", "artelier/banners/img", "artelier/banners/model");
+        Banner banner = buildBanner(item);
+
+        stubBanner(banner);
+        when(itemBannerMapper.toResponse(item)).thenReturn(itemResponse(true, 1));
+
+        service.updateItem(banner.getId(), item.getId(), updateRequest("artelier/banners/img", null));
+
+        verify(cloudinaryService).delete("artelier/banners/model", CloudinaryService.RESOURCE_RAW);
+        verifyNoMoreInteractions(cloudinaryService);
+    }
+
+    @Test
+    void shouldNotTouchCloudinaryWhenAssetsDoNotChange() {
+        ItemBanner item = buildItem(1, "A", "artelier/banners/img", "artelier/banners/model");
+        Banner banner = buildBanner(item);
+
+        stubBanner(banner);
+        when(itemBannerMapper.toResponse(item)).thenReturn(itemResponse(true, 1));
+
+        service.updateItem(banner.getId(), item.getId(),
+                updateRequest("artelier/banners/img", "artelier/banners/model"));
+
+        verifyNoInteractions(cloudinaryService);
+    }
+
+    @Test
+    void shouldThrowIfItemNotFoundOnUpdateItem() {
+        ItemBanner item = buildItem(1, "A");
+        Banner banner = buildBanner(item);
+
+        stubBanner(banner);
 
         assertThrows(ArtelierException.class,
-                () -> service.updateItem(banner.getId(), 0, updateRequest()));
-        assertThrows(ArtelierException.class,
-                () -> service.updateItem(banner.getId(), 2, updateRequest()));
+                () -> service.updateItem(banner.getId(), UUID.randomUUID(), updateRequest()));
 
-        assertEquals("A", banner.getItems().getFirst().getTitle());
-        verify(bannerRepository, never()).save(any());
+        assertEquals("A", item.getTitle());
+        verifyNoInteractions(cloudinaryService);
     }
 
     @Test
@@ -625,8 +911,8 @@ class BannerServiceTest {
         when(bannerRepository.findById(any())).thenReturn(Optional.empty());
 
         assertThrows(ArtelierException.class,
-                () -> service.updateItem(UUID.randomUUID(), 1, updateRequest()));
+                () -> service.updateItem(UUID.randomUUID(), UUID.randomUUID(), updateRequest()));
 
-        verify(bannerRepository, never()).save(any());
+        verifyNoInteractions(cloudinaryService);
     }
 }
