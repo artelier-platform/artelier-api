@@ -6,6 +6,7 @@ import com.artelier.api.dto.request.ItemBannerRequest;
 import com.artelier.api.dto.request.ItemBannerUpdateRequest;
 import com.artelier.api.dto.response.BannerResponse;
 import com.artelier.api.dto.response.ItemBannerResponse;
+import com.artelier.api.dto.response.UploadedAssetResponse;
 import com.artelier.api.exception.ArtelierException;
 import com.artelier.api.repository.UserRepository;
 import com.artelier.api.security.JwtUtil;
@@ -17,8 +18,10 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.time.Instant;
 import java.util.List;
@@ -124,8 +127,17 @@ class BannerControllerTest {
         return new BannerResponse(id, true, Instant.parse("2026-10-27T10:00:00Z"), items);
     }
 
+    /** First bytes of a real PNG, enough for a multipart upload in a controller test. */
+    private MockMultipartFile pngFile() {
+        byte[] png = {
+                (byte) 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A,
+                0x00, 0x00, 0x00, 0x0D
+        };
+        return new MockMultipartFile("file", "banner.png", "image/png", png);
+    }
+
     // =========================
-    // PUBLIC - GET /banner
+    // PUBLIC - GET /banners
     // =========================
 
     @Test
@@ -137,23 +149,96 @@ class BannerControllerTest {
                 List.of(bannerResponse(bannerId, List.of(itemResponse(itemId, 1, "Summer"))))
         );
 
-        mockMvc.perform(get("/banner"))
+        mockMvc.perform(get("/banners"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].id").value(bannerId.toString()))
-                .andExpect(jsonPath("$[0].items.length()").value(1))
-                .andExpect(jsonPath("$[0].items[0].id").value(itemId.toString()))
-                .andExpect(jsonPath("$[0].items[0].title").value("Summer"))
-                .andExpect(jsonPath("$[0].items[0].sortOrder").value(1));
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.length()").value(1))
+                .andExpect(jsonPath("$.data[0].id").value(bannerId.toString()))
+                .andExpect(jsonPath("$.data[0].items.length()").value(1))
+                .andExpect(jsonPath("$.data[0].items[0].id").value(itemId.toString()))
+                .andExpect(jsonPath("$.data[0].items[0].title").value("Summer"))
+                .andExpect(jsonPath("$.data[0].items[0].sortOrder").value(1));
     }
 
     @Test
     void shouldReturnEmptyListWhenNoActiveBanners() throws Exception {
         when(bannerService.getActiveBanners()).thenReturn(List.of());
 
-        mockMvc.perform(get("/banner"))
+        mockMvc.perform(get("/banners"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(0));
+                .andExpect(jsonPath("$.data.length()").value(0));
+    }
+
+    // =========================
+    // ADMIN - GET /admin/banners
+    // =========================
+
+    @Test
+    void shouldReturnAllBannersForAdmin() throws Exception {
+        UUID first = UUID.randomUUID();
+        UUID second = UUID.randomUUID();
+
+        when(bannerService.getAllBanners()).thenReturn(List.of(
+                bannerResponse(first, List.of(itemResponse(UUID.randomUUID(), 1, "A"))),
+                bannerResponse(second, List.of())
+        ));
+
+        mockMvc.perform(get("/admin/banners"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(2))
+                .andExpect(jsonPath("$.data[0].id").value(first.toString()))
+                .andExpect(jsonPath("$.data[1].id").value(second.toString()))
+                .andExpect(jsonPath("$.data[1].items.length()").value(0));
+
+        verify(bannerService).getAllBanners();
+    }
+
+    // =========================
+    // ADMIN - UPLOAD IMAGE
+    // =========================
+
+    @Test
+    void shouldUploadImage() throws Exception {
+        when(bannerService.uploadImage(any()))
+                .thenReturn(new UploadedAssetResponse(
+                        "https://res.cloudinary.com/artelier/image/upload/banners/new.png",
+                        "artelier/banners/new"
+                ));
+
+        mockMvc.perform(multipart("/admin/banners/uploads").file(pngFile()))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.url")
+                        .value("https://res.cloudinary.com/artelier/image/upload/banners/new.png"))
+                .andExpect(jsonPath("$.data.publicId").value("artelier/banners/new"));
+
+        verify(bannerService).uploadImage(any());
+    }
+
+    @Test
+    void shouldRejectUploadWhenFilePartIsMissing() throws Exception {
+        mockMvc.perform(multipart("/admin/banners/uploads"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(bannerService);
+    }
+
+    @Test
+    void shouldReturnBadRequestWhenServiceRejectsTheImage() throws Exception {
+        when(bannerService.uploadImage(any()))
+                .thenThrow(ArtelierException.badRequest("Invalid image"));
+
+        mockMvc.perform(multipart("/admin/banners/uploads").file(pngFile()))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldReturnPayloadTooLargeWhenFileExceedsTheLimit() throws Exception {
+        when(bannerService.uploadImage(any()))
+                .thenThrow(new MaxUploadSizeExceededException(5L * 1024 * 1024));
+
+        mockMvc.perform(multipart("/admin/banners/uploads").file(pngFile()))
+                .andExpect(status().isPayloadTooLarge());
     }
 
     // =========================
@@ -170,8 +255,8 @@ class BannerControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(bannerJson(itemJson(1))))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").value(bannerId.toString()))
-                .andExpect(jsonPath("$.items[0].title").value("Item 1"));
+                .andExpect(jsonPath("$.data.id").value(bannerId.toString()))
+                .andExpect(jsonPath("$.data.items[0].title").value("Item 1"));
 
         ArgumentCaptor<BannerRequest> captor = ArgumentCaptor.forClass(BannerRequest.class);
         verify(bannerService).createBanner(captor.capture());
@@ -275,7 +360,6 @@ class BannerControllerTest {
         doThrow(ArtelierException.notFound("Banner not found"))
                 .when(bannerService).deleteBanner(bannerId);
 
-        // Assumes the global exception handler maps ArtelierException.notFound to 404
         mockMvc.perform(delete("/admin/banners/" + bannerId))
                 .andExpect(status().isNotFound());
     }
@@ -296,8 +380,8 @@ class BannerControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(itemJson(3)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").value(itemId.toString()))
-                .andExpect(jsonPath("$.sortOrder").value(3));
+                .andExpect(jsonPath("$.data.id").value(itemId.toString()))
+                .andExpect(jsonPath("$.data.sortOrder").value(3));
 
         verify(bannerService).addItem(eq(bannerId), any(ItemBannerRequest.class));
     }
@@ -355,8 +439,8 @@ class BannerControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(itemJson(1)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").value(itemId.toString()))
-                .andExpect(jsonPath("$.sortOrder").value(2));
+                .andExpect(jsonPath("$.data.id").value(itemId.toString()))
+                .andExpect(jsonPath("$.data.sortOrder").value(2));
 
         verify(bannerService).addItem(eq(bannerId), any(ItemBannerRequest.class), eq(2));
     }
@@ -372,7 +456,7 @@ class BannerControllerTest {
     }
 
     // =========================
-    // ADMIN - UPDATE ITEM
+    // ADMIN - UPDATE ITEM (by itemId)
     // =========================
 
     @Test
@@ -380,21 +464,45 @@ class BannerControllerTest {
         UUID bannerId = UUID.randomUUID();
         UUID itemId = UUID.randomUUID();
 
-        when(bannerService.updateItem(eq(bannerId), eq(1), any(ItemBannerUpdateRequest.class)))
+        when(bannerService.updateItem(eq(bannerId), eq(itemId), any(ItemBannerUpdateRequest.class)))
                 .thenReturn(itemResponse(itemId, 1, "Updated title"));
 
-        mockMvc.perform(put("/admin/banners/" + bannerId + "/items/1")
+        mockMvc.perform(put("/admin/banners/" + bannerId + "/items/" + itemId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(updateItemJson()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(itemId.toString()))
-                .andExpect(jsonPath("$.title").value("Updated title"));
+                .andExpect(jsonPath("$.data.id").value(itemId.toString()))
+                .andExpect(jsonPath("$.data.title").value("Updated title"));
 
         ArgumentCaptor<ItemBannerUpdateRequest> captor =
                 ArgumentCaptor.forClass(ItemBannerUpdateRequest.class);
-        verify(bannerService).updateItem(eq(bannerId), eq(1), captor.capture());
+        verify(bannerService).updateItem(eq(bannerId), eq(itemId), captor.capture());
         assertEquals("Shop now", captor.getValue().buttonLabel());
         assertTrue(captor.getValue().showButton());
+    }
+
+    @Test
+    void shouldRejectUpdateItemWhenItemIdIsNotAUuid() throws Exception {
+        mockMvc.perform(put("/admin/banners/" + UUID.randomUUID() + "/items/1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updateItemJson()))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(bannerService);
+    }
+
+    @Test
+    void shouldReturnNotFoundWhenUpdatingMissingItem() throws Exception {
+        UUID bannerId = UUID.randomUUID();
+        UUID itemId = UUID.randomUUID();
+
+        when(bannerService.updateItem(eq(bannerId), eq(itemId), any(ItemBannerUpdateRequest.class)))
+                .thenThrow(ArtelierException.notFound("Banner item not found"));
+
+        mockMvc.perform(put("/admin/banners/" + bannerId + "/items/" + itemId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updateItemJson()))
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -408,7 +516,7 @@ class BannerControllerTest {
                 }
                 """;
 
-        mockMvc.perform(put("/admin/banners/" + UUID.randomUUID() + "/items/1")
+        mockMvc.perform(put("/admin/banners/" + UUID.randomUUID() + "/items/" + UUID.randomUUID())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json))
                 .andExpect(status().isBadRequest());
@@ -428,7 +536,7 @@ class BannerControllerTest {
                 }
                 """.formatted("a".repeat(121));
 
-        mockMvc.perform(put("/admin/banners/" + UUID.randomUUID() + "/items/1")
+        mockMvc.perform(put("/admin/banners/" + UUID.randomUUID() + "/items/" + UUID.randomUUID())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json))
                 .andExpect(status().isBadRequest());
@@ -464,62 +572,119 @@ class BannerControllerTest {
     }
 
     // =========================
-    // ADMIN - DELETE ITEM
+    // ADMIN - MOVE ITEM (position)
+    // =========================
+
+    @Test
+    void shouldMoveItem() throws Exception {
+        UUID bannerId = UUID.randomUUID();
+        UUID itemId = UUID.randomUUID();
+
+        mockMvc.perform(patch("/admin/banners/" + bannerId + "/items/" + itemId + "/position")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"newOrder\": 3}"))
+                .andExpect(status().isNoContent());
+
+        verify(bannerService).moveItem(bannerId, itemId, 3);
+    }
+
+    @Test
+    void shouldRejectMoveItemWhenNewOrderIsMissing() throws Exception {
+        mockMvc.perform(patch("/admin/banners/" + UUID.randomUUID() + "/items/" + UUID.randomUUID() + "/position")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(bannerService);
+    }
+
+    @Test
+    void shouldRejectMoveItemWhenNewOrderIsLessThanOne() throws Exception {
+        mockMvc.perform(patch("/admin/banners/" + UUID.randomUUID() + "/items/" + UUID.randomUUID() + "/position")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"newOrder\": 0}"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(bannerService);
+    }
+
+    @Test
+    void shouldRejectMoveItemWhenNewOrderIsNotANumber() throws Exception {
+        mockMvc.perform(patch("/admin/banners/" + UUID.randomUUID() + "/items/" + UUID.randomUUID() + "/position")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"newOrder\": \"first\"}"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(bannerService);
+    }
+
+    @Test
+    void shouldRejectMoveItemWhenItemIdIsNotAUuid() throws Exception {
+        mockMvc.perform(patch("/admin/banners/" + UUID.randomUUID() + "/items/2/position")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"newOrder\": 1}"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(bannerService);
+    }
+
+    @Test
+    void shouldReturnBadRequestWhenServiceRejectsTheNewOrder() throws Exception {
+        UUID bannerId = UUID.randomUUID();
+        UUID itemId = UUID.randomUUID();
+        doThrow(ArtelierException.badRequest("Order must be between 1 and 3"))
+                .when(bannerService).moveItem(bannerId, itemId, 9);
+
+        mockMvc.perform(patch("/admin/banners/" + bannerId + "/items/" + itemId + "/position")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"newOrder\": 9}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldReturnNotFoundWhenMovingMissingItem() throws Exception {
+        UUID bannerId = UUID.randomUUID();
+        UUID itemId = UUID.randomUUID();
+        doThrow(ArtelierException.notFound("Banner item not found"))
+                .when(bannerService).moveItem(bannerId, itemId, 1);
+
+        mockMvc.perform(patch("/admin/banners/" + bannerId + "/items/" + itemId + "/position")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"newOrder\": 1}"))
+                .andExpect(status().isNotFound());
+    }
+
+    // =========================
+    // ADMIN - DELETE ITEM (by itemId)
     // =========================
 
     @Test
     void shouldDeleteItem() throws Exception {
         UUID bannerId = UUID.randomUUID();
+        UUID itemId = UUID.randomUUID();
 
-        mockMvc.perform(delete("/admin/banners/" + bannerId + "/items/2"))
+        mockMvc.perform(delete("/admin/banners/" + bannerId + "/items/" + itemId))
                 .andExpect(status().isNoContent());
 
-        verify(bannerService).deleteItem(bannerId, 2);
+        verify(bannerService).deleteItem(bannerId, itemId);
     }
 
     @Test
-    void shouldReturnBadRequestWhenServiceRejectsDeleteItemOrder() throws Exception {
-        UUID bannerId = UUID.randomUUID();
-        doThrow(ArtelierException.badRequest("Order must be between 1 and 3"))
-                .when(bannerService).deleteItem(bannerId, 9);
-
-        // Assumes the global exception handler maps ArtelierException.badRequest to 400
-        mockMvc.perform(delete("/admin/banners/" + bannerId + "/items/9"))
-                .andExpect(status().isBadRequest());
-    }
-
-    // =========================
-    // ADMIN - REORDER ITEMS
-    // =========================
-
-    @Test
-    void shouldReorderItems() throws Exception {
-        UUID bannerId = UUID.randomUUID();
-
-        mockMvc.perform(patch("/admin/banners/" + bannerId + "/items/reorder")
-                        .param("oldOrder", "1")
-                        .param("newOrder", "3"))
-                .andExpect(status().isNoContent());
-
-        verify(bannerService).reorderItem(bannerId, 1, 3);
-    }
-
-    @Test
-    void shouldRejectReorderWhenParamIsMissing() throws Exception {
-        mockMvc.perform(patch("/admin/banners/" + UUID.randomUUID() + "/items/reorder")
-                        .param("oldOrder", "1"))
+    void shouldRejectDeleteItemWhenItemIdIsNotAUuid() throws Exception {
+        mockMvc.perform(delete("/admin/banners/" + UUID.randomUUID() + "/items/2"))
                 .andExpect(status().isBadRequest());
 
         verifyNoInteractions(bannerService);
     }
 
     @Test
-    void shouldRejectReorderWhenParamIsNotANumber() throws Exception {
-        mockMvc.perform(patch("/admin/banners/" + UUID.randomUUID() + "/items/reorder")
-                        .param("oldOrder", "first")
-                        .param("newOrder", "3"))
-                .andExpect(status().isBadRequest());
+    void shouldReturnNotFoundWhenDeletingMissingItem() throws Exception {
+        UUID bannerId = UUID.randomUUID();
+        UUID itemId = UUID.randomUUID();
+        doThrow(ArtelierException.notFound("Banner item not found"))
+                .when(bannerService).deleteItem(bannerId, itemId);
 
-        verifyNoInteractions(bannerService);
+        mockMvc.perform(delete("/admin/banners/" + bannerId + "/items/" + itemId))
+                .andExpect(status().isNotFound());
     }
 }
