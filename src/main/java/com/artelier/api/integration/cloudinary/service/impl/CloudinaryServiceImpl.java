@@ -45,7 +45,7 @@ public class CloudinaryServiceImpl implements CloudinaryService {
                     ObjectUtils.asMap("folder", folder)
             );
             return objectMapper.convertValue(result, CloudinaryUploadResponse.class);
-        } catch (IOException e) {
+        } catch (IOException | RuntimeException e) {
             throw new CloudinaryUploadException(
                     "Cloudinary upload failed for file: " + file.getOriginalFilename(), e);
         }

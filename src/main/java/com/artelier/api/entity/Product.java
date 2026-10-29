@@ -88,15 +88,15 @@ public class Product {
             String slug
     ) {
         return Product.builder()
-                .name(request.getName())
+                .name(request.name())
                 .slug(slug)
-                .description(request.getDescription())
-                .story(request.getStory())
-                .price(request.getPrice())
-                .stockType(request.getStockType())
-                .stockQuantity(request.getStockQuantity())
-                .isCustomOrder(request.getIsCustomOrder())
-                .isActive(request.getIsActive())
+                .description(request.description())
+                .story(request.story())
+                .price(request.price())
+                .stockType(request.stockType())
+                .stockQuantity(request.stockQuantity())
+                .isCustomOrder(request.isCustomOrder())
+                .isActive(request.isActive())
                 .category(category)
                 .build();
     }

@@ -1,3 +1,4 @@
+
 package com.artelier.api.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -6,6 +7,11 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 
+/**
+ * Standard envelope that wraps every JSON response of the API.
+ *
+ * @param <T> type of the response payload
+ */
 @Getter
 @Setter
 @AllArgsConstructor
@@ -18,18 +24,20 @@ public class AppResponse<T> {
 
     @Schema(
             description = "Indicates whether the request was successful",
-            example = "true"
+            example = "true",
+            requiredMode = Schema.RequiredMode.REQUIRED
     )
     private boolean success;
 
     @Schema(
             description = "Human-readable message describing the result",
-            example = "Product created successfully"
+            example = "Product created successfully",
+            requiredMode = Schema.RequiredMode.REQUIRED
     )
     private String message;
 
     @Schema(
-            description = "Response payload containing requested data (nullable when no data is returned)",
+            description = "Response payload containing requested data",
             nullable = true
     )
     private T data;

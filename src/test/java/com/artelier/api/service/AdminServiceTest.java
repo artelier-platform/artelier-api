@@ -3,7 +3,7 @@ package com.artelier.api.service;
 import com.artelier.api.entity.User;
 import com.artelier.api.exception.ArtelierException;
 import com.artelier.api.repository.UserRepository;
-import com.artelier.api.service.impl.AdminServiceImpl;
+import com.artelier.api.service.impl.UserServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.*;
@@ -20,7 +20,7 @@ class AdminServiceTest {
     private UserRepository userRepository;
 
     @InjectMocks
-    private AdminServiceImpl adminService;
+    private UserServiceImpl adminService;
 
     private UUID userId;
     private User user;

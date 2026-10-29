@@ -1,182 +1,143 @@
 package com.artelier.api.controller;
 
-import com.artelier.api.dto.request.BannerRequest;
-import com.artelier.api.dto.request.ItemBannerRequest;
-import com.artelier.api.dto.request.ItemBannerUpdateRequest;
-import com.artelier.api.dto.request.PositionRequest;
-import com.artelier.api.dto.request.StatusRequest;
 import com.artelier.api.dto.response.AppResponse;
 import com.artelier.api.dto.response.BannerResponse;
-import com.artelier.api.dto.response.ItemBannerResponse;
-import com.artelier.api.dto.response.UploadedAssetResponse;
 import com.artelier.api.service.BannerService;
-
-import jakarta.validation.Valid;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.UUID;
 
+/**
+ * REST controller exposing the banners displayed to visitors of the storefront.
+ *
+ * <p>All endpoints in this controller are <b>public</b>: they do not require a
+ * Bearer token. They are explicitly excluded from the global {@code bearerAuth}
+ * security requirement through {@link SecurityRequirements}, so Swagger UI does
+ * not send an {@code Authorization} header for them.</p>
+ *
+ * <h2>Response conventions</h2>
+ * <ul>
+ *   <li>Every response is wrapped in {@link AppResponse}
+ *       ({@code success}, {@code message}, optional {@code data}).</li>
+ *   <li>Errors are translated to {@link AppResponse} with {@code success = false}
+ *       by the global exception handler.</li>
+ * </ul>
+ *
+ * <p>This class only handles HTTP concerns (routing, status codes and
+ * documentation). The logic that decides which banners are active lives in
+ * {@link BannerService}.</p>
+ */
 @RestController
 @RequiredArgsConstructor
+@Tag(
+        name = "Banners",
+        description = """
+        Public endpoints to retrieve the banners shown to visitors.
+
+        ## Access
+
+        These endpoints are **public**. No authentication is required and no
+        `Authorization` header must be sent.
+
+        ## Response Format
+
+        Every response is wrapped in the standard `AppResponse` envelope:
+
+        | Field | Description |
+        |-------|-------------|
+        | `success` | `true` when the request was processed correctly |
+        | `message` | Human-readable summary of the result |
+        | `data` | Payload of the response (when applicable) |
+        """
+)
 public class BannerController {
+
+    // =========================================================
+    // OpenAPI shared descriptions
+    // =========================================================
+
+    private static final String DESC_SERVER_ERROR = "Unexpected server error";
+
+    // =========================================================
+    // Dependencies
+    // =========================================================
 
     private final BannerService bannerService;
 
-    // =========================
+    // =========================================================
     // PUBLIC
-    // =========================
+    // =========================================================
 
+    /**
+     * Retrieves the banners that are currently active.
+     *
+     * <p>The criteria that determine whether a banner is active, as well as the
+     * ordering of the result, are defined by {@link BannerService}.</p>
+     *
+     * @return {@code 200} with the list of active banners; the list is empty
+     *         when there are none
+     */
+    @SecurityRequirements
+    @Operation(
+            operationId = "getActiveBanners",
+            summary = "List active banners",
+            description = """
+        Retrieves the banners that are currently active.
+
+        ## Access
+
+        This endpoint is public and does not require authentication.
+
+        ## Result
+
+        - Only active banners are returned.
+        - When there are no active banners, the endpoint still responds
+          with `200` and an empty `data` list.
+        """
+    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "Active banners retrieved successfully",
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                    schema = @Schema(implementation = AppResponse.class),
+                    examples = @ExampleObject(
+                            name = "banners-empty",
+                            summary = "No active banners",
+                            value = """
+                                {
+                                  "success": true,
+                                  "message": "Banners retrieved",
+                                  "data": []
+                                }
+                                """
+                    )
+            )
+    )
+    @ApiResponse(
+            responseCode = "500",
+            description = DESC_SERVER_ERROR,
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                    schema = @Schema(implementation = AppResponse.class)
+            )
+    )
     @GetMapping("/banners")
     public ResponseEntity<AppResponse<List<BannerResponse>>> getActiveBanners() {
         return ResponseEntity.ok(AppResponse.success(
                 "Banners retrieved",
                 bannerService.getActiveBanners()
         ));
-    }
-
-    // =========================
-    // ADMIN - BANNERS
-    // =========================
-
-    @GetMapping("/admin/banners")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<AppResponse<List<BannerResponse>>> getAllBanners() {
-        return ResponseEntity.ok(AppResponse.success(
-                "Banners retrieved",
-                bannerService.getAllBanners()
-        ));
-    }
-
-    @PostMapping(
-            value = "/admin/banners/uploads",
-            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
-    )
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<AppResponse<UploadedAssetResponse>> uploadImage(
-            @RequestPart("file") MultipartFile file
-    ) {
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(AppResponse.success(
-                        "Image uploaded",
-                        bannerService.uploadImage(file)
-                ));
-    }
-
-    @PostMapping("/admin/banners")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<AppResponse<BannerResponse>> createBanner(
-            @Valid @RequestBody BannerRequest request
-    ) {
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(AppResponse.success(
-                        "Banner created",
-                        bannerService.createBanner(request)
-                ));
-    }
-
-    @PatchMapping("/admin/banners/{bannerId}/status")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> updateBannerStatus(
-            @PathVariable UUID bannerId,
-            @Valid @RequestBody StatusRequest request
-    ) {
-        bannerService.updateBannerStatus(bannerId, request.isActive());
-        return ResponseEntity.noContent().build();
-    }
-
-    @DeleteMapping("/admin/banners/{bannerId}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> deleteBanner(@PathVariable UUID bannerId) {
-        bannerService.deleteBanner(bannerId);
-        return ResponseEntity.noContent().build();
-    }
-
-    // =========================
-    // ADMIN - BANNER ITEMS
-    // =========================
-
-    @PostMapping("/admin/banners/{bannerId}/items")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<AppResponse<ItemBannerResponse>> addItem(
-            @PathVariable UUID bannerId,
-            @Valid @RequestBody ItemBannerRequest request
-    ) {
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(AppResponse.success(
-                        "Item added",
-                        bannerService.addItem(bannerId, request)
-                ));
-    }
-
-    // {order} aquí es la posición donde se inserta el item NUEVO (no identifica un item existente)
-    @PostMapping("/admin/banners/{bannerId}/items/{order}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<AppResponse<ItemBannerResponse>> insertItem(
-            @PathVariable UUID bannerId,
-            @PathVariable int order,
-            @Valid @RequestBody ItemBannerRequest request
-    ) {
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(AppResponse.success(
-                        "Item added",
-                        bannerService.addItem(bannerId, request, order)
-                ));
-    }
-
-    @PutMapping("/admin/banners/{bannerId}/items/{itemId}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<AppResponse<ItemBannerResponse>> updateItem(
-            @PathVariable UUID bannerId,
-            @PathVariable UUID itemId,
-            @Valid @RequestBody ItemBannerUpdateRequest request
-    ) {
-        return ResponseEntity.ok(AppResponse.success(
-                "Item updated",
-                bannerService.updateItem(bannerId, itemId, request)
-        ));
-    }
-
-    @PatchMapping("/admin/banners/{bannerId}/items/{itemId}/status")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> updateItemStatus(
-            @PathVariable UUID bannerId,
-            @PathVariable UUID itemId,
-            @Valid @RequestBody StatusRequest request
-    ) {
-        bannerService.updateItemStatus(bannerId, itemId, request.isActive());
-        return ResponseEntity.noContent().build();
-    }
-
-    @PatchMapping("/admin/banners/{bannerId}/items/{itemId}/position")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> moveItem(
-            @PathVariable UUID bannerId,
-            @PathVariable UUID itemId,
-            @Valid @RequestBody PositionRequest request
-    ) {
-        bannerService.moveItem(bannerId, itemId, request.newOrder());
-        return ResponseEntity.noContent().build();
-    }
-
-    @DeleteMapping("/admin/banners/{bannerId}/items/{itemId}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> deleteItem(
-            @PathVariable UUID bannerId,
-            @PathVariable UUID itemId
-    ) {
-        bannerService.deleteItem(bannerId, itemId);
-        return ResponseEntity.noContent().build();
     }
 }

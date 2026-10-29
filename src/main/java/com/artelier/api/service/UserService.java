@@ -6,7 +6,7 @@ import org.springframework.data.domain.Page;
 
 import java.util.UUID;
 
-public interface AdminService {
+public interface UserService {
 
     void setBanned(UUID userId, boolean banned);
 

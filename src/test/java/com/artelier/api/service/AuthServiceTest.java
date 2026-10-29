@@ -13,15 +13,28 @@ import com.artelier.api.service.impl.AuthServiceImpl;
 import com.artelier.api.service.impl.LoginAttemptServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.*;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 class AuthServiceTest {
+
+    private static final String EMAIL = "test@mail.com";
+    private static final String PASSWORD = "password123";
 
     @Mock
     private UserRepository userRepository;
@@ -48,177 +61,199 @@ class AuthServiceTest {
         MockitoAnnotations.openMocks(this);
 
         user = new User();
-        user.setEmail("test@mail.com");
+        user.setEmail(EMAIL);
         user.setPasswordHash("hashed");
         user.setRole(Role.BUYER);
         user.setBanned(false);
     }
 
-    @Test
-    void login_success() {
+    // =========================================================
+    // Helpers
+    // =========================================================
 
-        LoginRequest request = new LoginRequest();
-        request.setEmail("test@mail.com");
-        request.setPassword("1234");
-
-        when(loginAttemptService.tryConsume(any())).thenReturn(true);
-        when(userRepository.findByEmail(request.getEmail()))
-                .thenReturn(Optional.of(user));
-        when(passwordEncoder.matches("1234", "hashed"))
-                .thenReturn(true);
-        when(jwtUtil.generateToken(any(), any()))
-                .thenReturn("token");
-        when(jwtUtil.getExpirationMs())
-                .thenReturn(900000L);
-
+    /** Stubs the collaborators that build the token pair of a new session. */
+    private void stubSession() {
         RefreshToken refreshToken = new RefreshToken();
         refreshToken.setToken("refresh");
 
-        when(refreshTokenService.create(user)).thenReturn(refreshToken);
+        when(jwtUtil.generateToken(any(), any())).thenReturn("token");
+        when(jwtUtil.getExpirationMs()).thenReturn(900000L);
+        when(refreshTokenService.create(any())).thenReturn(refreshToken);
+    }
 
-        AuthResponse response = authService.login(request);
+    private static void assertError(HttpStatus status, String message, ArtelierException ex) {
+        assertEquals(status, ex.getStatus());
+        assertEquals(message, ex.getMessage());
+    }
+
+    // =========================================================
+    // LOGIN
+    // =========================================================
+
+    @Test
+    void login_success() {
+        when(loginAttemptService.tryConsume(EMAIL)).thenReturn(true);
+        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches(PASSWORD, "hashed")).thenReturn(true);
+        stubSession();
+
+        AuthResponse response = authService.login(new LoginRequest(EMAIL, PASSWORD));
 
         assertNotNull(response);
-        assertEquals("token", response.getToken());
+        assertEquals("token", response.token());
+        assertEquals("BUYER", response.role());
+        assertEquals("refresh", response.refreshToken());
+        assertEquals(900L, response.expiresIn());
+        verify(jwtUtil).generateToken(EMAIL, "BUYER");
     }
 
     @Test
     void login_rateLimitExceeded() {
+        when(loginAttemptService.tryConsume(EMAIL)).thenReturn(false);
 
-        LoginRequest request = new LoginRequest();
-        request.setEmail("test@mail.com");
+        ArtelierException ex = assertThrows(ArtelierException.class,
+                () -> authService.login(new LoginRequest(EMAIL, PASSWORD)));
 
-        when(loginAttemptService.tryConsume(any())).thenReturn(false);
-
-        assertThrows(ArtelierException.class,
-                () -> authService.login(request));
+        assertError(HttpStatus.BAD_REQUEST,
+                "Too many failed attempts. Try again in 5 minutes", ex);
+        verifyNoInteractions(userRepository);
     }
 
     @Test
-    void login_userNotFound() {
+    void login_userNotFound_returnsSameErrorAsWrongPassword() {
+        when(loginAttemptService.tryConsume(EMAIL)).thenReturn(true);
+        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.empty());
 
-        LoginRequest request = new LoginRequest();
-        request.setEmail("test@mail.com");
+        ArtelierException ex = assertThrows(ArtelierException.class,
+                () -> authService.login(new LoginRequest(EMAIL, PASSWORD)));
 
-        when(loginAttemptService.tryConsume(any())).thenReturn(true);
-        when(userRepository.findByEmail(any()))
-                .thenReturn(Optional.empty());
-
-        assertThrows(ArtelierException.class,
-                () -> authService.login(request));
+        assertError(HttpStatus.UNAUTHORIZED, "Invalid credentials", ex);
+        verifyNoInteractions(jwtUtil, refreshTokenService);
     }
 
     @Test
     void login_invalidPassword() {
+        when(loginAttemptService.tryConsume(EMAIL)).thenReturn(true);
+        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches(any(), any())).thenReturn(false);
 
-        LoginRequest request = new LoginRequest();
-        request.setEmail("test@mail.com");
-        request.setPassword("wrong");
+        ArtelierException ex = assertThrows(ArtelierException.class,
+                () -> authService.login(new LoginRequest(EMAIL, "wrong-password")));
 
-        when(loginAttemptService.tryConsume(any())).thenReturn(true);
-        when(userRepository.findByEmail(any()))
-                .thenReturn(Optional.of(user));
-        when(passwordEncoder.matches(any(), any()))
-                .thenReturn(false);
-
-        assertThrows(ArtelierException.class,
-                () -> authService.login(request));
+        assertError(HttpStatus.UNAUTHORIZED, "Invalid credentials", ex);
+        verifyNoInteractions(jwtUtil, refreshTokenService);
     }
 
     @Test
-    void login_userBanned() {
-
+    void login_bannedUser_withCorrectPassword_isForbidden() {
         user.setBanned(true);
 
-        LoginRequest request = new LoginRequest();
-        request.setEmail("test@mail.com");
+        when(loginAttemptService.tryConsume(EMAIL)).thenReturn(true);
+        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches(PASSWORD, "hashed")).thenReturn(true);
 
-        when(loginAttemptService.tryConsume(any())).thenReturn(true);
-        when(userRepository.findByEmail(any()))
-                .thenReturn(Optional.of(user));
+        ArtelierException ex = assertThrows(ArtelierException.class,
+                () -> authService.login(new LoginRequest(EMAIL, PASSWORD)));
 
-        assertThrows(ArtelierException.class,
-                () -> authService.login(request));
+        assertError(HttpStatus.FORBIDDEN, "User is banned", ex);
+        verifyNoInteractions(jwtUtil, refreshTokenService);
     }
+
+    @Test
+    void login_bannedUser_withWrongPassword_doesNotRevealTheBan() {
+        user.setBanned(true);
+
+        when(loginAttemptService.tryConsume(EMAIL)).thenReturn(true);
+        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches(any(), any())).thenReturn(false);
+
+        ArtelierException ex = assertThrows(ArtelierException.class,
+                () -> authService.login(new LoginRequest(EMAIL, "wrong-password")));
+
+        assertError(HttpStatus.UNAUTHORIZED, "Invalid credentials", ex);
+    }
+
+    // =========================================================
+    // REGISTER
+    // =========================================================
 
     @Test
     void register_success() {
+        RegisterRequest request =
+                new RegisterRequest("new@mail.com", PASSWORD, "John Doe", "+573001234567");
 
-        RegisterRequest request = new RegisterRequest();
-        request.setEmail("new@mail.com");
-        request.setPassword("1234");
-
-        when(userRepository.existsByEmail(request.getEmail()))
-                .thenReturn(false);
-        when(passwordEncoder.encode(any()))
-                .thenReturn("hashed");
-        when(jwtUtil.generateToken(any(), any()))
-                .thenReturn("token");
-        when(jwtUtil.getExpirationMs())
-                .thenReturn(900000L);
-
-        RefreshToken refreshToken = new RefreshToken();
-        refreshToken.setToken("refresh");
-
-        when(refreshTokenService.create(any()))
-                .thenReturn(refreshToken);
+        when(userRepository.existsByEmail("new@mail.com")).thenReturn(false);
+        when(passwordEncoder.encode(PASSWORD)).thenReturn("hashed");
+        stubSession();
 
         AuthResponse response = authService.register(request);
 
         assertNotNull(response);
-        verify(userRepository).save(any(User.class));
+        assertEquals("token", response.token());
+        assertEquals("BUYER", response.role());
+
+        ArgumentCaptor<User> saved = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(saved.capture());
+        assertEquals("new@mail.com", saved.getValue().getEmail());
+        assertEquals("hashed", saved.getValue().getPasswordHash());
+        assertEquals("John Doe", saved.getValue().getFullName());
+        assertEquals("+573001234567", saved.getValue().getPhone());
+        assertEquals(Role.BUYER, saved.getValue().getRole());
     }
 
     @Test
     void register_emailExists() {
+        RegisterRequest request = new RegisterRequest(EMAIL, PASSWORD, "John Doe", null);
 
-        RegisterRequest request = new RegisterRequest();
-        request.setEmail("test@mail.com");
+        when(userRepository.existsByEmail(EMAIL)).thenReturn(true);
 
-        when(userRepository.existsByEmail(any()))
-                .thenReturn(true);
-
-        assertThrows(ArtelierException.class,
+        ArtelierException ex = assertThrows(ArtelierException.class,
                 () -> authService.register(request));
+
+        assertError(HttpStatus.CONFLICT, "Email already in use", ex);
+        verify(userRepository, never()).save(any());
     }
+
+    // =========================================================
+    // REFRESH
+    // =========================================================
 
     @Test
     void refresh_success() {
+        RefreshToken oldToken = new RefreshToken();
+        oldToken.setUser(user);
+        oldToken.setToken("old");
 
-        RefreshToken rt = new RefreshToken();
-        rt.setUser(user);
-        rt.setToken("old");
+        RefreshToken newToken = new RefreshToken();
+        newToken.setToken("newRefresh");
 
-        when(refreshTokenService.validate("old")).thenReturn(rt);
+        when(refreshTokenService.validate("old")).thenReturn(oldToken);
         when(jwtUtil.generateToken(any(), any())).thenReturn("newToken");
         when(jwtUtil.getExpirationMs()).thenReturn(900000L);
-
-        RefreshToken newRt = new RefreshToken();
-        newRt.setToken("newRefresh");
-
-        when(refreshTokenService.create(user)).thenReturn(newRt);
+        when(refreshTokenService.create(user)).thenReturn(newToken);
 
         AuthResponse response = authService.refresh("old");
 
         assertNotNull(response);
-        assertEquals("newToken", response.getToken());
-
+        assertEquals("newToken", response.token());
+        assertEquals("newRefresh", response.refreshToken());
+        assertEquals(900L, response.expiresIn());
         verify(refreshTokenService).revokeByUser(user);
     }
 
     @Test
     void refresh_userBanned() {
-
         user.setBanned(true);
 
-        RefreshToken rt = new RefreshToken();
-        rt.setUser(user);
+        RefreshToken token = new RefreshToken();
+        token.setUser(user);
 
-        when(refreshTokenService.validate(any())).thenReturn(rt);
+        when(refreshTokenService.validate("token")).thenReturn(token);
 
-        assertThrows(ArtelierException.class,
+        ArtelierException ex = assertThrows(ArtelierException.class,
                 () -> authService.refresh("token"));
+
+        assertError(HttpStatus.FORBIDDEN, "User is banned", ex);
+        verify(refreshTokenService, never()).revokeByUser(any());
     }
-
-
 }

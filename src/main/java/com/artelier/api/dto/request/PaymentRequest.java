@@ -5,35 +5,53 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
-import lombok.Data;
 
-@Data
-@Schema(description = "Request to initiate a payment for an order.")
-public class PaymentRequest {
+/**
+ * Request to initiate a payment for an order.
+ *
+ * <p>JSON property names follow Wompi's snake_case convention
+ * ({@code payment_method}, {@code customer_data}).</p>
+ *
+ * @param paymentMethod payment method chosen by the customer (required)
+ * @param customerData  optional customer data; required for PSE payments
+ */
+@Schema(description = "Request to initiate a payment for an order")
+public record PaymentRequest(
 
-    @Valid
-    @NotNull
-    @JsonProperty("payment_method")
-    @Schema(
-            description = "Payment method chosen by the customer.",
-            requiredMode = Schema.RequiredMode.REQUIRED
-    )
-    private PaymentMethodBody paymentMethod;
+        @Schema(
+                description = "Payment method chosen by the customer",
+                requiredMode = Schema.RequiredMode.REQUIRED
+        )
+        @Valid
+        @NotNull
+        @JsonProperty("payment_method")
+        PaymentMethodBody paymentMethod,
 
-    @JsonProperty("customer_data")
-    @Schema(description = "Optional customer info (name, phone). Required for PSE.")
-    private CustomerData customerData;
+        @Schema(description = "Optional customer info (name, phone). Required for PSE.")
+        @JsonProperty("customer_data")
+        CustomerData customerData
 
-    @Data
-    @Schema(description = "Customer personal data.")
-    public static class CustomerData {
+) {
 
-        @JsonProperty("full_name")
-        @Schema(example = "María García")
-        private String fullName;
+    /**
+     * Customer personal data.
+     *
+     * @param fullName    full name of the customer
+     * @param phoneNumber phone number of the customer, including country code
+     */
+    @Schema(description = "Customer personal data")
+    public record CustomerData(
 
-        @JsonProperty("phone_number")
-        @Schema(example = "+573001112233")
-        private String phoneNumber;
-    }
+            @Schema(description = "Full name of the customer", example = "María García")
+            @JsonProperty("full_name")
+            String fullName,
+
+            @Schema(
+                    description = "Phone number of the customer, including country code",
+                    example = "+573001112233"
+            )
+            @JsonProperty("phone_number")
+            String phoneNumber
+
+    ) {}
 }
