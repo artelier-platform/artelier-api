@@ -4,34 +4,61 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
-import lombok.Data;
 
-@Data
+/**
+ * User registration request.
+ *
+ * @param email    email address of the new account (required, must be unique)
+ * @param password account password (required, at least 8 characters)
+ * @param fullName full name of the user (required)
+ * @param phone    optional phone number
+ */
 @Schema(description = "User registration request")
-public class RegisterRequest {
+public record RegisterRequest(
 
-    @Schema(
-            example = "user@example.com"
-    )
-    @Email
-    @NotBlank
-    private String email;
+        @Schema(
+                description = "Email address of the new account. Must be unique.",
+                example = "user@example.com",
+                requiredMode = Schema.RequiredMode.REQUIRED
+        )
+        @Email
+        @NotBlank
+        String email,
 
-    @Schema(
-            example = "StrongPass123"
-    )
-    @NotBlank
-    @Size(min = 8)
-    private String password;
+        @Schema(
+                description = "Account password",
+                example = "StrongPass123",
+                format = "password",
+                minLength = 8,
+                maxLength = 72,
+                requiredMode = Schema.RequiredMode.REQUIRED
+        )
+        @NotBlank
+        @Size(min = 8, max = 72)
+        String password,
 
-    @Schema(
-            example = "John Doe"
-    )
-    @NotBlank
-    private String fullName;
+        @Schema(
+                description = "Full name of the user",
+                example = "John Doe",
+                requiredMode = Schema.RequiredMode.REQUIRED
+        )
+        @NotBlank
+        String fullName,
 
-    @Schema(
-            example = "+573001234567"
-    )
-    private String phone;
+        @Schema(
+                description = "Optional phone number, including country code",
+                example = "+573001234567"
+        )
+        String phone
+
+) {
+
+    /**
+     * Masks the password so the credentials never end up in logs.
+     */
+    @Override
+    public String toString() {
+        return "RegisterRequest[email=" + email + ", password=***, fullName=" + fullName
+                + ", phone=" + phone + "]";
+    }
 }

@@ -5,6 +5,7 @@ import com.artelier.api.dto.request.PaymentWebhookRequest;
 import com.artelier.api.dto.response.PaymentResponse;
 import com.artelier.api.entity.Order;
 import com.artelier.api.entity.Payment;
+import com.artelier.api.entity.User;
 import com.artelier.api.enums.OrderStatus;
 import com.artelier.api.exception.InvalidOrderStateException;
 import com.artelier.api.exception.OrderNotFoundException;
@@ -54,7 +55,10 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     @Transactional
-    public PaymentResponse createPendingPayment(UUID orderId, PaymentRequest request, String clientIp) {
+    public PaymentResponse createPendingPayment(UUID orderId, PaymentRequest request, String clientIp, User requester) {
+        // Ownership guard: throws 404 / 403 before anything else, including the pending-payment shortcut.
+        orderService.getOrderById(orderId, requester);
+
         return paymentRepository.findActiveByOrderId(orderId)
                 .map(paymentMapper::toResponse)
                 .orElseGet(() -> createNewPaymentAttempt(orderId, request, clientIp));
@@ -82,7 +86,7 @@ public class PaymentServiceImpl implements PaymentService {
         );
 
         log.info("Creating Wompi transaction for order {} method={}",
-                orderId, request.getPaymentMethod().getClass().getSimpleName());
+                orderId, request.paymentMethod().getClass().getSimpleName());
 
         WompiTransactionResponse wompiResponse = wompiClient.createTransaction(wompiRequest);
         WompiTransactionResponse.TransactionData txData = wompiResponse.getData();
@@ -113,7 +117,7 @@ public class PaymentServiceImpl implements PaymentService {
             PaymentRequest request,
             String clientIp
     ) {
-        PaymentMethodBody paymentMethod = request.getPaymentMethod();
+        PaymentMethodBody paymentMethod = request.paymentMethod();
 
         if (paymentMethod instanceof PsePaymentMethod pse
                 && (pse.getReferenceOne() == null || pse.getReferenceOne().isBlank())) {
@@ -132,11 +136,11 @@ public class PaymentServiceImpl implements PaymentService {
                 .redirectUrl(redirectUrl)
                 .ip(clientIp);
 
-        if (paymentMethod instanceof PsePaymentMethod && request.getCustomerData() != null) {
+        if (paymentMethod instanceof PsePaymentMethod && request.customerData() != null) {
             builder.customerData(
                     WompiTransactionRequest.CustomerData.builder()
-                            .fullName(request.getCustomerData().getFullName())
-                            .phoneNumber(request.getCustomerData().getPhoneNumber())
+                            .fullName(request.customerData().fullName())
+                            .phoneNumber(request.customerData().phoneNumber())
                             .build()
             );
         }
@@ -153,10 +157,10 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     @Transactional
     public void confirmPayment(PaymentWebhookRequest request) {
-        var tx = request.getData().getTransaction();
+        var tx = request.data().transaction();
 
-        Payment payment = paymentRepository.findByReference(tx.getReference())
-                .orElseThrow(() -> new PaymentNotFoundException(tx.getReference()));
+        Payment payment = paymentRepository.findByReference(tx.reference())
+                .orElseThrow(() -> new PaymentNotFoundException(tx.reference()));
 
         if (isFinalStatus(payment.getStatus())) {
             log.info("Webhook ignored — payment {} already {}", payment.getId(), payment.getStatus());
@@ -168,10 +172,10 @@ public class PaymentServiceImpl implements PaymentService {
             throw new InvalidOrderStateException(order.getStatus());
         }
 
-        payment.setWompiTransactionId(tx.getId());
-        resolvePaymentMethod(payment, tx.getPaymentMethodType());
+        payment.setWompiTransactionId(tx.id());
+        resolvePaymentMethod(payment, tx.paymentMethodType());
 
-        switch (tx.getStatus()) {
+        switch (tx.status()) {
             case "APPROVED" -> {
                 payment.setStatus(PaymentStatus.APPROVED);
                 payment.setPaidAt(Instant.now());
@@ -190,7 +194,7 @@ public class PaymentServiceImpl implements PaymentService {
             default -> {
                 payment.setStatus(PaymentStatus.ERROR);
                 orderService.updateOrderStatusInternal(order.getId(), OrderStatus.PENDING_PAYMENT);
-                log.warn("Payment {} unexpected status={}", payment.getId(), tx.getStatus());
+                log.warn("Payment {} unexpected status={}", payment.getId(), tx.status());
             }
         }
 
@@ -199,7 +203,10 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     @Transactional(readOnly = true)
-    public PaymentResponse findByOrderId(UUID orderId) {
+    public PaymentResponse findByOrderId(UUID orderId, User requester) {
+        // Ownership guard: only the owner of the order or an admin can read its payment.
+        orderService.getOrderById(orderId, requester);
+
         return paymentRepository.findByOrderId(orderId)
                 .map(paymentMapper::toResponse)
                 .orElseThrow(() -> new PaymentNotFoundException(orderId));

@@ -72,12 +72,12 @@ public class ProductServiceImpl implements ProductService {
     @Transactional
     @Override
     public ProductResponse createProduct(ProductRequest request, List<MultipartFile> images) {
-        Category category = categoryRepository.findById(request.getCategoryId())
+        Category category = categoryRepository.findById(request.categoryId())
                 .orElseThrow(() -> ArtelierException.notFound(CATEGORY_NOT_FOUND));
 
-        Product product = Product.create(request, category, generateSlug(request.getName()));
+        Product product = Product.create(request, category, generateSlug(request.name()));
 
-        attachImages(product, images, request.getImages());
+        attachImages(product, images, request.images());
 
         return productMapper.toResponse(productRepository.save(product));
     }
@@ -89,23 +89,23 @@ public class ProductServiceImpl implements ProductService {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> ArtelierException.notFound(PRODUCT_NOT_FOUND));
 
-        Category category = categoryRepository.findById(request.getCategoryId())
+        Category category = categoryRepository.findById(request.categoryId())
                 .orElseThrow(() -> ArtelierException.notFound(CATEGORY_NOT_FOUND));
 
-        product.setName(request.getName());
-        product.setSlug(generateSlug(request.getName()));
-        product.setDescription(request.getDescription());
-        product.setStory(request.getStory());
-        product.setPrice(request.getPrice());
-        product.setStockType(request.getStockType());
-        product.setStockQuantity(request.getStockQuantity());
-        product.setIsCustomOrder(request.getIsCustomOrder());
-        product.setIsActive(request.getIsActive());
+        product.setName(request.name());
+        product.setSlug(generateSlug(request.name()));
+        product.setDescription(request.description());
+        product.setStory(request.story());
+        product.setPrice(request.price());
+        product.setStockType(request.stockType());
+        product.setStockQuantity(request.stockQuantity());
+        product.setIsCustomOrder(request.isCustomOrder());
+        product.setIsActive(request.isActive());
         product.setCategory(category);
 
         if (images != null && !images.isEmpty()) {
             product.getImages().clear();
-            attachImages(product, images, request.getImages());
+            attachImages(product, images, request.images());
         }
 
         return productMapper.toResponse(productRepository.save(product));
@@ -162,8 +162,8 @@ public class ProductServiceImpl implements ProductService {
 
             if (metadata != null && i < metadata.size()) {
                 ImageMetadata meta = metadata.get(i);
-                isPrimary = Boolean.TRUE.equals(meta.getIsPrimary());
-                sortOrder = meta.getSortOrder() != null ? meta.getSortOrder() : i;
+                isPrimary = Boolean.TRUE.equals(meta.isPrimary());
+                sortOrder = meta.sortOrder() != null ? meta.sortOrder() : i;
             } else {
                 isPrimary = (i == 0);
                 sortOrder = i;

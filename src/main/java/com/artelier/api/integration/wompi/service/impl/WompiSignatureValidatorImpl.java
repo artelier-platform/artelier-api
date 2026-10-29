@@ -19,36 +19,45 @@ public class WompiSignatureValidatorImpl implements WompiSignatureValidator {
     @Override
     public boolean isValid(PaymentWebhookRequest request) {
         try {
-            var tx = request.getData().getTransaction();
-            var sig = request.getSignature();
+            var tx = request.data().transaction();
+            var sig = request.signature();
 
             StringBuilder raw = new StringBuilder();
-            for (String prop : sig.getProperties()) {
+            for (String prop : sig.properties()) {
                 raw.append(resolveProperty(tx, prop));
             }
-            raw.append(request.getTimestamp());
+            raw.append(request.timestamp());
             raw.append(eventsKey);
 
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] hash = digest.digest(raw.toString().getBytes(StandardCharsets.UTF_8));
             String computed = HexFormat.of().formatHex(hash);
 
-            return computed.equals(sig.getChecksum());
+            return computed.equals(sig.checksum());
         } catch (Exception e) {
             log.error("Error validating Wompi webhook signature: {}", e.getMessage(), e);
             return false;
         }
     }
 
-    private String resolveProperty(PaymentWebhookRequest.Transaction tx, String prop) {
+    private String resolveProperty(
+            PaymentWebhookRequest.Transaction tx,
+            String prop
+    ) {
+        if (prop == null || prop.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Webhook signature property cannot be null or blank"
+            );
+        }
+
         return switch (prop) {
-            case "transaction.id"              -> tx.getId();
-            case "transaction.status"          -> tx.getStatus();
-            case "transaction.amount_in_cents" -> String.valueOf(tx.getAmountInCents());
-            default -> {
-                log.warn("Unknown webhook property '{}' — signature validation will fail", prop);
-                yield "";
-            }
+            case "transaction.id" -> tx.id();
+            case "transaction.status" -> tx.status();
+            case "transaction.amount_in_cents" ->
+                    String.valueOf(tx.amountInCents());
+            default -> throw new IllegalArgumentException(
+                    "Unknown webhook signature property: " + prop
+            );
         };
     }
 }

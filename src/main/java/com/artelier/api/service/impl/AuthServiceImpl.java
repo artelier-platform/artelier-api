@@ -28,21 +28,21 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public AuthResponse login(LoginRequest loginRequest) {
 
-        if (!loginAttemptService.tryConsume(loginRequest.getEmail())) {
+        if (!loginAttemptService.tryConsume(loginRequest.email())) {
             throw ArtelierException.badRequest(
                     "Too many failed attempts. Try again in 5 minutes"
             );
         }
 
-        User user = userRepository.findByEmail(loginRequest.getEmail())
-                .orElseThrow(() -> ArtelierException.notFound("User not found"));
+        User user = userRepository.findByEmail(loginRequest.email())
+                .filter(candidate -> passwordEncoder.matches(
+                        loginRequest.password(), candidate.getPasswordHash()))
+                .orElseThrow(() -> ArtelierException.unauthorized("Invalid credentials"));
 
+        // The ban is only reported once the password is verified, so the response
+        // never reveals whether an email is registered.
         if (user.isBanned()) {
             throw ArtelierException.forbidden("User is banned");
-        }
-
-        if (!passwordEncoder.matches(loginRequest.getPassword(), user.getPasswordHash())) {
-            throw ArtelierException.unauthorized("Invalid credentials");
         }
 
         return buildAuthResponse(user);
@@ -50,16 +50,16 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public AuthResponse register(RegisterRequest registerRequest) {
-        if (userRepository.existsByEmail(registerRequest.getEmail())) {
+        if (userRepository.existsByEmail(registerRequest.email())) {
             throw ArtelierException.conflict("Email already in use");
         }
 
         User user = new User();
         user.setRole(Role.BUYER);
-        user.setEmail(registerRequest.getEmail());
-        user.setPasswordHash(passwordEncoder.encode(registerRequest.getPassword()));
-        user.setFullName(registerRequest.getFullName());
-        user.setPhone(registerRequest.getPhone());
+        user.setEmail(registerRequest.email());
+        user.setPasswordHash(passwordEncoder.encode(registerRequest.password()));
+        user.setFullName(registerRequest.fullName());
+        user.setPhone(registerRequest.phone());
 
         userRepository.save(user);
         return buildAuthResponse(user);

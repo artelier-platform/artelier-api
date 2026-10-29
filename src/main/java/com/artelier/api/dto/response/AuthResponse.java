@@ -1,42 +1,55 @@
+
 package com.artelier.api.dto.response;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
 
-@Getter
-@AllArgsConstructor
+/**
+ * Response returned after a successful authentication.
+ *
+ * @param token JWT access token
+ * @param role user role
+ * @param refreshToken token used to refresh authentication
+ * @param expiresIn access token lifetime in seconds
+ */
 @Schema(
         name = "AuthResponse",
-        description = "Response returned after successful authentication containing JWT tokens and session metadata"
+        description = "Authentication response containing JWT tokens and session metadata"
 )
-public class AuthResponse {
+public record AuthResponse(
 
-    @Schema(
-            description = "JWT access token used to authenticate API requests",
-            example = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.accessTokenExample123456789"
-    )
-    private String token;
+        @Schema(
+                description = "JWT access token",
+                example = "eyJhbGciOiJIUzI1NiJ9.example",
+                requiredMode = Schema.RequiredMode.REQUIRED
+        )
+        String token,
 
-    @Schema(
-            description = "User role assigned to the authenticated user",
-            example = "BUYER",
-            allowableValues = {
-                    "ADMIN",
-                    "BUYER"
-            }
-    )
-    private String role;
+        @Schema(
+                description = "User role",
+                example = "BUYER",
+                allowableValues = {"ADMIN", "BUYER"},
+                requiredMode = Schema.RequiredMode.REQUIRED
+        )
+        String role,
 
-    @Schema(
-            description = "Refresh token used to obtain new access tokens without re-authentication",
-            example = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.refreshTokenExample987654321"
-    )
-    private String refreshToken;
+        @Schema(
+                description = "Refresh token",
+                example = "refreshTokenExample",
+                requiredMode = Schema.RequiredMode.REQUIRED
+        )
+        String refreshToken,
 
-    @Schema(
-            description = "Access token expiration time in seconds",
-            example = "3600"
-    )
-    private long expiresIn;
+        @Schema(
+                description = "Access token expiration in seconds",
+                example = "3600",
+                requiredMode = Schema.RequiredMode.REQUIRED
+        )
+        long expiresIn
+
+) {
+    @Override
+    public String toString() {
+        return "AuthResponse[token=***, role=" + role
+                + ", refreshToken=***, expiresIn=" + expiresIn + "]";
+    }
 }

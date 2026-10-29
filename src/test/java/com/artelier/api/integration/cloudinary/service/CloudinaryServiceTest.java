@@ -87,4 +87,75 @@ class CloudinaryServiceTest {
         assertTrue(ex.getMessage().contains("Cloudinary upload failed for file"));
         assertTrue(ex.getMessage().contains("image.jpg"));
     }
+
+
+    // ─────────────────────────────────────────────
+    // delete — successful deletion
+    // ─────────────────────────────────────────────
+
+    @Test
+    void shouldDeleteAssetSuccessfully() throws Exception {
+        String publicId = "artelier/products/abc";
+        String resourceType = "image";
+
+        when(uploader.destroy(eq(publicId), anyMap()))
+                .thenReturn(Map.of("result", "ok"));
+
+        assertDoesNotThrow(() -> service.delete(publicId, resourceType));
+
+        verify(uploader).destroy(
+                eq(publicId),
+                argThat(options ->
+                        "image".equals(options.get("resource_type"))
+                                && Boolean.TRUE.equals(options.get("invalidate"))
+                )
+        );
+    }
+
+    // ─────────────────────────────────────────────
+    // delete — null or blank public ID
+    // ─────────────────────────────────────────────
+
+    @Test
+    void shouldSkipDeletionWhenPublicIdIsNull() throws Exception {
+        assertDoesNotThrow(() -> service.delete(null, "image"));
+
+        verifyNoInteractions(uploader);
+    }
+
+    @Test
+    void shouldSkipDeletionWhenPublicIdIsBlank() throws Exception {
+        assertDoesNotThrow(() -> service.delete("   ", "image"));
+
+        verifyNoInteractions(uploader);
+    }
+
+    // ─────────────────────────────────────────────
+    // delete — Cloudinary API failures
+    // ─────────────────────────────────────────────
+
+    @Test
+    void shouldNotThrowExceptionWhenCloudinaryDeletionFails() throws Exception {
+        String publicId = "artelier/products/abc";
+
+        when(uploader.destroy(eq(publicId), anyMap()))
+                .thenThrow(new RuntimeException("Cloudinary timeout"));
+
+        assertDoesNotThrow(() -> service.delete(publicId, "image"));
+
+        verify(uploader).destroy(eq(publicId), anyMap());
+    }
+
+    @Test
+    void shouldNotThrowExceptionWhenCloudinaryDeletionThrowsIOException()
+            throws Exception {
+        String publicId = "artelier/products/abc";
+
+        when(uploader.destroy(eq(publicId), anyMap()))
+                .thenThrow(new IOException("Network error"));
+
+        assertDoesNotThrow(() -> service.delete(publicId, "image"));
+
+        verify(uploader).destroy(eq(publicId), anyMap());
+    }
 }

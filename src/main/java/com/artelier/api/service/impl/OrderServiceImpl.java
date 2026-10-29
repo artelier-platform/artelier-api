@@ -44,40 +44,40 @@ public class OrderServiceImpl implements OrderService {
         Order order = Order.builder()
                 .user(user)
                 .status(OrderStatus.PENDING_PAYMENT)
-                .shippingAddress(request.getShippingAddress())
-                .notes(request.getNotes())
+                .shippingAddress(request.shippingAddress())
+                .notes(request.notes())
                 .customerEmail(userEmail)
                 .build();
 
         BigDecimal subtotal = BigDecimal.ZERO;
 
-        for (OrderRequest.OrderItemRequest itemRequest : request.getItems()) {
-            Product product = productRepository.findById(itemRequest.getProductId())
+        for (OrderRequest.OrderItemRequest itemRequest : request.items()) {
+            Product product = productRepository.findById(itemRequest.productId())
                     .orElseThrow(() -> ArtelierException.notFound("Product not found"));
 
             if (!product.getIsActive()) throw ArtelierException.badRequest("Product is not available");
 
             if (product.getStockType() != StockType.UNLIMITED) {
                 int available = product.getStockQuantity() != null ? product.getStockQuantity() : 0;
-                if (available < itemRequest.getQuantity()) {
+                if (available < itemRequest.quantity()) {
                     throw ArtelierException.badRequest(
                             "Insufficient stock for product: " + product.getName()
                                     + " (available: " + available + ")"
                     );
                 }
-                product.setStockQuantity(available - itemRequest.getQuantity());
+                product.setStockQuantity(available - itemRequest.quantity());
             }
 
             BigDecimal unitPrice = product.getPrice();
-            BigDecimal itemTotal = unitPrice.multiply(BigDecimal.valueOf(itemRequest.getQuantity()));
+            BigDecimal itemTotal = unitPrice.multiply(BigDecimal.valueOf(itemRequest.quantity()));
             subtotal = subtotal.add(itemTotal);
 
             OrderItem orderItem = OrderItem.builder()
                     .order(order)
                     .product(product)
-                    .quantity(itemRequest.getQuantity())
+                    .quantity(itemRequest.quantity())
                     .unitPrice(unitPrice)
-                    .customNotes(itemRequest.getCustomNotes())
+                    .customNotes(itemRequest.customNotes())
                     .build();
 
             order.getItems().add(orderItem);

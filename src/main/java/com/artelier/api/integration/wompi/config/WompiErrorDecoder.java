@@ -23,17 +23,20 @@ public class WompiErrorDecoder implements ErrorDecoder {
         String wompiCode = "UNKNOWN";
         String message = "Wompi communication error";
 
-        try (InputStream body = response.body().asInputStream()) {
-            JsonNode root = objectMapper.readTree(body);
-            JsonNode error = root.path("error");
-            if (!error.isMissingNode()) {
-                wompiCode = error.path("type").asText("UNKNOWN");
-                message = error.path("reason").asText(
-                        error.path("messages").toString()
-                );
+        if (response.body() != null) {
+            try (InputStream body = response.body().asInputStream()) {
+                JsonNode root = objectMapper.readTree(body);
+                JsonNode error = root.path("error");
+
+                if (!error.isMissingNode()) {
+                    wompiCode = error.path("type").asText("UNKNOWN");
+                    message = error.path("reason").asText(
+                            error.path("messages").toString()
+                    );
+                }
+            } catch (IOException e) {
+                log.warn("Could not parse Wompi error body for method {}", methodKey);
             }
-        } catch (IOException e) {
-            log.warn("Could not parse Wompi error body for method {}", methodKey);
         }
 
         HttpStatus status = HttpStatus.resolve(response.status());

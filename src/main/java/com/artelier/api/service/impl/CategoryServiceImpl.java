@@ -29,13 +29,13 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     public CategoryResponse create(CategoryRequest request) {
-        if (categoryRepository.existsBySlug(request.getSlug())) {
+        if (categoryRepository.existsBySlug(request.slug())) {
             throw ArtelierException.conflict("Slug already in use");
         }
         Category category = new Category();
-        category.setName(request.getName());
-        category.setSlug(request.getSlug());
-        category.setDescription(request.getDescription());
+        category.setName(request.name());
+        category.setSlug(request.slug());
+        category.setDescription(request.description());
         return categoryMapper.toResponse(categoryRepository.save(category));
     }
 }
