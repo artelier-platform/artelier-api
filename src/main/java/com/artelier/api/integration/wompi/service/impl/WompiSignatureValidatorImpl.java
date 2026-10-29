@@ -40,15 +40,24 @@ public class WompiSignatureValidatorImpl implements WompiSignatureValidator {
         }
     }
 
-    private String resolveProperty(PaymentWebhookRequest.Transaction tx, String prop) {
+    private String resolveProperty(
+            PaymentWebhookRequest.Transaction tx,
+            String prop
+    ) {
+        if (prop == null || prop.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Webhook signature property cannot be null or blank"
+            );
+        }
+
         return switch (prop) {
-            case "transaction.id"              -> tx.id();
-            case "transaction.status"          -> tx.status();
-            case "transaction.amount_in_cents" -> String.valueOf(tx.amountInCents());
-            default -> {
-                log.warn("Unknown webhook property '{}' — signature validation will fail", prop);
-                yield "";
-            }
+            case "transaction.id" -> tx.id();
+            case "transaction.status" -> tx.status();
+            case "transaction.amount_in_cents" ->
+                    String.valueOf(tx.amountInCents());
+            default -> throw new IllegalArgumentException(
+                    "Unknown webhook signature property: " + prop
+            );
         };
     }
 }

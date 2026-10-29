@@ -44,7 +44,7 @@
 		<developer>
 			<id>geronimo</id>
 			<name>Geronimo Martinez Nuñez</name>
-			<url>https://github.com/MimiRandomS</url>
+			<url>https://github.com/MimiRandomDev</url>
 			<roles>
 				<role>Full Stack Developer</role>
 				<role>Backend Engineer</role>
@@ -317,12 +317,13 @@
 						<format>HTML</format>
 					</formats>
 					<excludes>
-						<exclude>**/config/**</exclude>
-						<exclude>**/security/**</exclude>
+						<exclude>com/artelier/api/config/CorsConfig.class</exclude>
+						<exclude>com/artelier/api/config/AppConfig.class</exclude>
+						<exclude>com/artelier/api/config/OpenApiConfig.class</exclude>
+						<exclude>com/artelier/api/integration/cloudinary/config/CloudinaryConfig.class</exclude>
 						<exclude>**/mapper/**</exclude>
 						<exclude>**/dto/**</exclude>
 						<exclude>**/entity/**</exclude>
-						<exclude>**/exception/**</exclude>
 						<exclude>**/repository/**</exclude>
 						<exclude>**/ArtelierApiApplication*</exclude>
 					</excludes>

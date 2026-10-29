@@ -323,4 +323,171 @@ class AuthControllerTest {
                     .andExpect(jsonPath("$.data").doesNotExist());
         }
     }
+
+
+    // =========================================================
+    // REFRESH
+    // =========================================================
+
+    private static final String REFRESH_URL = "/auth/refresh";
+
+    private static String refreshJson(String refreshToken) {
+        return """
+                {
+                  "refreshToken": "%s"
+                }
+                """.formatted(refreshToken);
+    }
+
+    @Nested
+    @DisplayName("POST /auth/refresh")
+    class Refresh {
+
+        @Test
+        @DisplayName("200 – valid refresh token returns the rotated token pair")
+        void refresh_success() throws Exception {
+            when(authService.refresh("refresh-token"))
+                    .thenReturn(authResponse());
+
+            mockMvc.perform(post(REFRESH_URL)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(refreshJson("refresh-token")))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.success").value(true))
+                    .andExpect(jsonPath("$.message").value("Token refreshed"))
+                    .andExpect(jsonPath("$.data.token").value("access-token"))
+                    .andExpect(jsonPath("$.data.role").value("BUYER"))
+                    .andExpect(jsonPath("$.data.refreshToken").value("refresh-token"))
+                    .andExpect(jsonPath("$.data.expiresIn").value(3600));
+
+            verify(authService).refresh("refresh-token");
+        }
+
+        @Test
+        @DisplayName("400 – missing refresh token is rejected")
+        void refresh_missingToken() throws Exception {
+            mockMvc.perform(post(REFRESH_URL)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.success").value(false))
+                    .andExpect(jsonPath("$.message").value("Validation failed"));
+
+            verifyNoInteractions(authService);
+        }
+
+        @Test
+        @DisplayName("400 – blank refresh token is rejected")
+        void refresh_blankToken() throws Exception {
+            mockMvc.perform(post(REFRESH_URL)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(refreshJson("")))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.success").value(false))
+                    .andExpect(jsonPath("$.message").value("Validation failed"));
+
+            verifyNoInteractions(authService);
+        }
+
+        @Test
+        @DisplayName("401 – invalid refresh token")
+        void refresh_invalidToken() throws Exception {
+            when(authService.refresh("invalid-token"))
+                    .thenThrow(ArtelierException.unauthorized("Invalid refresh token"));
+
+            mockMvc.perform(post(REFRESH_URL)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(refreshJson("invalid-token")))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.success").value(false))
+                    .andExpect(jsonPath("$.message").value("Invalid refresh token"));
+
+            verify(authService).refresh("invalid-token");
+        }
+
+        @Test
+        @DisplayName("403 – banned user cannot refresh the session")
+        void refresh_bannedUser() throws Exception {
+            when(authService.refresh("refresh-token"))
+                    .thenThrow(ArtelierException.forbidden("User is banned"));
+
+            mockMvc.perform(post(REFRESH_URL)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(refreshJson("refresh-token")))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.success").value(false))
+                    .andExpect(jsonPath("$.message").value("User is banned"));
+
+            verify(authService).refresh("refresh-token");
+        }
+    }
+
+
+    // =========================================================
+    // LOGOUT
+    // =========================================================
+
+    private static final String LOGOUT_URL = "/auth/logout";
+
+    @Nested
+    @DisplayName("POST /auth/logout")
+    class Logout {
+
+        @Test
+        @DisplayName("200 – valid refresh token logs out successfully")
+        void logout_success() throws Exception {
+            mockMvc.perform(post(LOGOUT_URL)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(refreshJson("refresh-token")))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.success").value(true))
+                    .andExpect(jsonPath("$.message").value("Logged out successfully"));
+
+            verify(authService).logout("refresh-token");
+        }
+
+        @Test
+        @DisplayName("400 – missing refresh token is rejected")
+        void logout_missingToken() throws Exception {
+            mockMvc.perform(post(LOGOUT_URL)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.success").value(false))
+                    .andExpect(jsonPath("$.message").value("Validation failed"));
+
+            verifyNoInteractions(authService);
+        }
+
+        @Test
+        @DisplayName("400 – blank refresh token is rejected")
+        void logout_blankToken() throws Exception {
+            mockMvc.perform(post(LOGOUT_URL)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(refreshJson("")))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.success").value(false))
+                    .andExpect(jsonPath("$.message").value("Validation failed"));
+
+            verifyNoInteractions(authService);
+        }
+
+        @Test
+        @DisplayName("401 – invalid refresh token")
+        void logout_invalidToken() throws Exception {
+            org.mockito.Mockito.doThrow(
+                    ArtelierException.unauthorized("Invalid refresh token")
+            ).when(authService).logout("invalid-token");
+
+            mockMvc.perform(post(LOGOUT_URL)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(refreshJson("invalid-token")))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.success").value(false))
+                    .andExpect(jsonPath("$.message").value("Invalid refresh token"));
+
+            verify(authService).logout("invalid-token");
+        }
+    }
+
 }
