@@ -1,12 +1,15 @@
 package com.artelier.api.config;
 
+import com.artelier.api.security.CustomAccessDeniedHandler;
+import com.artelier.api.security.CustomAuthenticationEntryPoint;
 import com.artelier.api.security.JwtFilter;
-import jakarta.servlet.http.HttpServletResponse;
+import com.artelier.api.security.SecurityRoutes;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -22,27 +25,24 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtFilter jwtFilter;
+    private final CustomAuthenticationEntryPoint authenticationEntryPoint;
+    private final CustomAccessDeniedHandler accessDeniedHandler;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) {
 
         http
+                .cors(Customizer.withDefaults())
+
                 .csrf(AbstractHttpConfigurer::disable)
 
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**").permitAll()
-                        .requestMatchers("/admin/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.GET, "/categories/**").permitAll()
-                        .requestMatchers("/products/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/payments/webhook").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/banners").permitAll()
+                        .requestMatchers(SecurityRoutes.PUBLIC_ROUTES).permitAll()
                         .requestMatchers(
-                                "/swagger",
-                                "/swagger-ui/**",
-                                "/v3/api-docs/**",
-                                "/swagger-resources/**",
-                                "/webjars/**"
+                                HttpMethod.GET,
+                                SecurityRoutes.PUBLIC_GET_ROUTES
                         ).permitAll()
+                        .requestMatchers("/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
 
@@ -50,21 +50,8 @@ public class SecurityConfig {
                         UsernamePasswordAuthenticationFilter.class)
 
                 .exceptionHandling(ex -> ex
-                        .authenticationEntryPoint(
-                                (request, response, authException) -> {
-
-                                    log.warn(
-                                            "Unauthorized access attempt to {} : {}",
-                                            request.getRequestURI(),
-                                            authException.getMessage()
-                                    );
-
-                                    response.sendError(
-                                            HttpServletResponse.SC_UNAUTHORIZED,
-                                            "Unauthorized"
-                                    );
-                                }
-                        )
+                        .authenticationEntryPoint(authenticationEntryPoint)
+                        .accessDeniedHandler(accessDeniedHandler)
                 );
 
         return http.build();

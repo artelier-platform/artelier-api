@@ -17,6 +17,8 @@ public class JwtFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
     private final UserRepository userRepository;
+    private final CustomAuthenticationEntryPoint authenticationEntryPoint;
+
 
     // Public auth endpoints must not be rejected because of a stale Bearer header.
     @Override
@@ -43,7 +45,16 @@ public class JwtFilter extends OncePerRequestFilter {
 
                     User user = userRepository.findByEmail(email).orElse(null);
                     if (user == null || user.isBanned()) {
-                        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                        SecurityContextHolder.clearContext();
+
+                        authenticationEntryPoint.commence(
+                                request,
+                                response,
+                                new org.springframework.security.authentication.BadCredentialsException(
+                                        "Invalid authentication credentials"
+                                )
+                        );
+
                         return;
                     }
 
@@ -59,8 +70,7 @@ public class JwtFilter extends OncePerRequestFilter {
                     SecurityContextHolder.getContext().setAuthentication(auth);
                 }
             } else {
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                return;
+                SecurityContextHolder.clearContext();
             }
         }
 
