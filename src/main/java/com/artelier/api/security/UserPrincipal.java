@@ -39,4 +39,10 @@ public record UserPrincipal(User user) implements UserDetails {
     public boolean isAccountNonLocked() {
         return !user.isBanned();
     }
+
+    @Override
+    public String toString() {
+        return "UserPrincipal[email=" + getUsername()
+                + ", role=" + user.getRole() + "]";
+    }
 }
