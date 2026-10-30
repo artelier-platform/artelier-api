@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -43,6 +44,9 @@ class JwtFilterTest {
     @Mock
     private HttpServletResponse response;
 
+    @Mock
+    private CustomAuthenticationEntryPoint authenticationEntryPoint;
+
     @BeforeEach
     void clearContext() {
         SecurityContextHolder.clearContext();
@@ -54,64 +58,7 @@ class JwtFilterTest {
     }
 
     @Test
-    void shouldContinueWhenAuthorizationHeaderMissing()
-            throws ServletException, IOException {
-
-        when(request.getHeader("Authorization"))
-                .thenReturn(null);
-
-        jwtFilter.doFilterInternal(request, response, filterChain);
-
-        verify(filterChain).doFilter(request, response);
-        verifyNoInteractions(jwtUtil);
-    }
-
-    @Test
-    void shouldReturn401WhenTokenIsInvalid()
-            throws ServletException, IOException {
-
-        when(request.getHeader("Authorization"))
-                .thenReturn("Bearer bad-token");
-
-        when(jwtUtil.validateToken("bad-token"))
-                .thenReturn(false);
-
-        jwtFilter.doFilterInternal(request, response, filterChain);
-
-        verify(response)
-                .setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-
-        verify(filterChain, never())
-                .doFilter(any(), any());
-    }
-
-    @Test
-    void shouldReturn401WhenUserDoesNotExist()
-            throws ServletException, IOException {
-
-        when(request.getHeader("Authorization"))
-                .thenReturn("Bearer valid");
-
-        when(jwtUtil.validateToken("valid"))
-                .thenReturn(true);
-
-        when(jwtUtil.extractUsername("valid"))
-                .thenReturn("test@mail.com");
-
-        when(userRepository.findByEmail("test@mail.com"))
-                .thenReturn(Optional.empty());
-
-        jwtFilter.doFilterInternal(request, response, filterChain);
-
-        verify(response)
-                .setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-
-        verify(filterChain, never())
-                .doFilter(any(), any());
-    }
-
-    @Test
-    void shouldReturn401WhenUserIsBanned()
+    void shouldRejectWhenUserIsBanned()
             throws ServletException, IOException {
 
         User user = new User();
@@ -131,11 +78,74 @@ class JwtFilterTest {
 
         jwtFilter.doFilterInternal(request, response, filterChain);
 
-        verify(response)
-                .setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        verify(authenticationEntryPoint).commence(
+                eq(request),
+                eq(response),
+                any(org.springframework.security.authentication.BadCredentialsException.class)
+        );
 
-        verify(filterChain, never())
-                .doFilter(any(), any());
+        verify(filterChain, never()).doFilter(any(), any());
+    }
+
+    @Test
+    void shouldRejectWhenUserDoesNotExist()
+            throws ServletException, IOException {
+
+        when(request.getHeader("Authorization"))
+                .thenReturn("Bearer valid");
+
+        when(jwtUtil.validateToken("valid"))
+                .thenReturn(true);
+
+        when(jwtUtil.extractUsername("valid"))
+                .thenReturn("test@mail.com");
+
+        when(userRepository.findByEmail("test@mail.com"))
+                .thenReturn(Optional.empty());
+
+        jwtFilter.doFilterInternal(request, response, filterChain);
+
+        verify(authenticationEntryPoint).commence(
+                eq(request),
+                eq(response),
+                any(org.springframework.security.authentication.BadCredentialsException.class)
+        );
+
+        verify(filterChain, never()).doFilter(any(), any());
+    }
+
+    @Test
+    void shouldContinueWhenTokenIsInvalid()
+            throws ServletException, IOException {
+
+        when(request.getHeader("Authorization"))
+                .thenReturn("Bearer bad-token");
+
+        when(jwtUtil.validateToken("bad-token"))
+                .thenReturn(false);
+
+        jwtFilter.doFilterInternal(request, response, filterChain);
+
+        verify(filterChain).doFilter(request, response);
+        verify(authenticationEntryPoint, never())
+                .commence(any(), any(), any());
+
+        assertNull(
+                SecurityContextHolder.getContext().getAuthentication()
+        );
+    }
+
+    @Test
+    void shouldContinueWhenAuthorizationHeaderMissing()
+            throws ServletException, IOException {
+
+        when(request.getHeader("Authorization"))
+                .thenReturn(null);
+
+        jwtFilter.doFilterInternal(request, response, filterChain);
+
+        verify(filterChain).doFilter(request, response);
+        verifyNoInteractions(jwtUtil);
     }
 
     @Test
