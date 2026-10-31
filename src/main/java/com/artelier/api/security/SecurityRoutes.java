@@ -15,7 +15,10 @@ public final class SecurityRoutes {
             "/swagger-ui/**",
             "/v3/api-docs/**",
             "/swagger-resources/**",
-            "/webjars/**"
+            "/webjars/**",
+            "/actuator/health",
+            "/actuator/health/liveness",
+            "/actuator/health/readiness"
     };
 
     // Public GET endpoints

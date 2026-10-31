@@ -6,5 +6,6 @@ import com.artelier.api.entity.User;
 public interface RefreshTokenService {
     RefreshToken create(User user);
     RefreshToken validate(String token);
-    void revokeByUser(User user);
+    void revokeByToken(String token);
+    RefreshToken consume(String token);
 }

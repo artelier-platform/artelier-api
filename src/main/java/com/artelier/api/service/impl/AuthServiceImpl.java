@@ -12,8 +12,10 @@ import com.artelier.api.security.JwtUtil;
 import com.artelier.api.service.AuthService;
 import com.artelier.api.service.RefreshTokenService;
 import lombok.AllArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @AllArgsConstructor
 @Service
@@ -25,6 +27,7 @@ public class AuthServiceImpl implements AuthService {
     private final RefreshTokenService refreshTokenService;
     private final LoginAttemptServiceImpl loginAttemptService;
 
+    @Transactional
     @Override
     public AuthResponse login(LoginRequest loginRequest) {
 
@@ -45,9 +48,12 @@ public class AuthServiceImpl implements AuthService {
             throw ArtelierException.forbidden("User is banned");
         }
 
+        loginAttemptService.reset(loginRequest.email());
+
         return buildAuthResponse(user);
     }
 
+    @Transactional
     @Override
     public AuthResponse register(RegisterRequest registerRequest) {
         if (userRepository.existsByEmail(registerRequest.email())) {
@@ -57,33 +63,41 @@ public class AuthServiceImpl implements AuthService {
         User user = new User();
         user.setRole(Role.BUYER);
         user.setEmail(registerRequest.email());
-        user.setPasswordHash(passwordEncoder.encode(registerRequest.password()));
+        user.setPasswordHash(
+                passwordEncoder.encode(registerRequest.password())
+        );
         user.setFullName(registerRequest.fullName());
         user.setPhone(registerRequest.phone());
 
         userRepository.save(user);
+
         return buildAuthResponse(user);
     }
 
+    @Transactional
     @Override
     public void logout(String refreshToken) {
-        RefreshToken rt = refreshTokenService.validate(refreshToken);
-        refreshTokenService.revokeByUser(rt.getUser());
+        refreshTokenService.consume(refreshToken);
     }
 
+    @Transactional
     @Override
     public AuthResponse refresh(String refreshToken) {
-        RefreshToken rt = refreshTokenService.validate(refreshToken);
+
+        RefreshToken rt = refreshTokenService.consume(refreshToken);
+
         User user = rt.getUser();
+
         if (user.isBanned()) {
             throw ArtelierException.forbidden("User is banned");
         }
-        refreshTokenService.revokeByUser(user);
+
+        RefreshToken newRefreshToken = refreshTokenService.create(user);
+
         String newAccessToken = jwtUtil.generateToken(
                 user.getEmail(),
                 user.getRole().name()
         );
-        RefreshToken newRefreshToken = refreshTokenService.create(user);
 
         return new AuthResponse(
                 newAccessToken,
@@ -104,6 +118,7 @@ public class AuthServiceImpl implements AuthService {
                 expiresIn
         );
     }
+
 
 
 }

@@ -20,6 +20,14 @@ public class LoginAttemptServiceImpl {
         return Bucket.builder().addLimit(limit).build();
     }
 
+    public void reset(String key) {
+        Bucket bucket = buckets.get(key);
+
+        if (bucket != null) {
+            bucket.reset();
+        }
+    }
+
     private Bucket getBucket(String key) {
         return buckets.computeIfAbsent(key, ignored -> newBucket());
     }

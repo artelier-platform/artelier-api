@@ -26,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -227,10 +228,17 @@ class AuthServiceTest {
         RefreshToken newToken = new RefreshToken();
         newToken.setToken("newRefresh");
 
-        when(refreshTokenService.validate("old")).thenReturn(oldToken);
-        when(jwtUtil.generateToken(any(), any())).thenReturn("newToken");
-        when(jwtUtil.getExpirationMs()).thenReturn(900000L);
-        when(refreshTokenService.create(user)).thenReturn(newToken);
+        when(refreshTokenService.consume("old"))
+                .thenReturn(oldToken);
+
+        when(jwtUtil.generateToken(any(), any()))
+                .thenReturn("newToken");
+
+        when(jwtUtil.getExpirationMs())
+                .thenReturn(900000L);
+
+        when(refreshTokenService.create(user))
+                .thenReturn(newToken);
 
         AuthResponse response = authService.refresh("old");
 
@@ -238,7 +246,10 @@ class AuthServiceTest {
         assertEquals("newToken", response.token());
         assertEquals("newRefresh", response.refreshToken());
         assertEquals(900L, response.expiresIn());
-        verify(refreshTokenService).revokeByUser(user);
+
+        verify(refreshTokenService).consume("old");
+        verify(refreshTokenService).create(user);
+        verify(refreshTokenService, never()).revokeByToken(anyString());
     }
 
     @Test
@@ -248,12 +259,22 @@ class AuthServiceTest {
         RefreshToken token = new RefreshToken();
         token.setUser(user);
 
-        when(refreshTokenService.validate("token")).thenReturn(token);
+        when(refreshTokenService.consume("token"))
+                .thenReturn(token);
 
-        ArtelierException ex = assertThrows(ArtelierException.class,
-                () -> authService.refresh("token"));
+        ArtelierException ex = assertThrows(
+                ArtelierException.class,
+                () -> authService.refresh("token")
+        );
 
-        assertError(HttpStatus.FORBIDDEN, "User is banned", ex);
-        verify(refreshTokenService, never()).revokeByUser(any());
+        assertError(
+                HttpStatus.FORBIDDEN,
+                "User is banned",
+                ex
+        );
+
+        verify(refreshTokenService).consume("token");
+        verify(refreshTokenService, never()).create(any(User.class));
     }
+
 }

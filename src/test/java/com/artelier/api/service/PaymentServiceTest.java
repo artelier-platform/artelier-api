@@ -75,7 +75,7 @@ import static org.mockito.Mockito.when;
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("PaymentServiceImpl – payment creation, webhook confirmation and institutions")
-class PaymentServiceImplTest {
+class PaymentServiceTest {
 
     private static final String CLIENT_IP = "203.0.113.5";
     private static final String REDIRECT_URL = "https://artelier.test/payment/result";
