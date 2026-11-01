@@ -2,9 +2,11 @@ package com.artelier.api.controller;
 
 import com.artelier.api.config.JacksonTestConfig;
 import com.artelier.api.config.SecurityConfig;
+import com.artelier.api.config.WithSecurity;
 import com.artelier.api.dto.response.BannerResponse;
 import com.artelier.api.dto.response.ItemBannerResponse;
 import com.artelier.api.repository.UserRepository;
+import com.artelier.api.security.CustomAuthenticationEntryPoint;
 import com.artelier.api.security.JwtUtil;
 import com.artelier.api.service.BannerService;
 import org.junit.jupiter.api.Disabled;
@@ -32,7 +34,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Access rules of {@code GET /banners} with the real {@link SecurityConfig} (filters enabled).
  */
 @WebMvcTest(BannerController.class)
-@Import({SecurityConfig.class, JacksonTestConfig.class})
+@WithSecurity
 @DisplayName("BannerController – security")
 class BannerControllerSecurityTest {
 
@@ -42,11 +44,6 @@ class BannerControllerSecurityTest {
     @MockitoBean
     private BannerService bannerService;
 
-    @MockitoBean
-    private JwtUtil jwtUtil;
-
-    @MockitoBean
-    private UserRepository userRepository;
 
     private void stubOneBanner() {
         ItemBannerResponse item = new ItemBannerResponse(

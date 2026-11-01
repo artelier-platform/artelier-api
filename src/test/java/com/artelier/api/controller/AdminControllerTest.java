@@ -1,6 +1,7 @@
 package com.artelier.api.controller;
 
 import com.artelier.api.config.SecurityConfig;
+import com.artelier.api.config.WithSecurity;
 import com.artelier.api.dto.response.BannerResponse;
 import com.artelier.api.dto.response.CategoryResponse;
 import com.artelier.api.dto.response.ItemBannerResponse;
@@ -8,6 +9,7 @@ import com.artelier.api.dto.response.ProductResponse;
 import com.artelier.api.dto.response.UploadedAssetResponse;
 import com.artelier.api.enums.StockType;
 import com.artelier.api.repository.UserRepository;
+import com.artelier.api.security.CustomAuthenticationEntryPoint;
 import com.artelier.api.security.JwtUtil;
 import com.artelier.api.service.BannerService;
 import com.artelier.api.service.CategoryService;
@@ -45,7 +47,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(AdminController.class)
-@Import(SecurityConfig.class)
+@WithSecurity
 @DisplayName("AdminController")
 class AdminControllerTest {
 
@@ -57,10 +59,6 @@ class AdminControllerTest {
     @MockitoBean private BannerService bannerService;
     @MockitoBean private CategoryService categoryService;
     @MockitoBean private ProductService productService;
-
-    // Security dependencies (JwtFilter / SecurityConfig).
-    @MockitoBean private JwtUtil jwtUtil;
-    @MockitoBean private UserRepository userRepository;
 
     private static final String ADMIN = "ADMIN";
 
@@ -960,6 +958,17 @@ class AdminControllerTest {
                     .andExpect(jsonPath("$.data[0].field").value("name"));
 
             verifyNoInteractions(productService);
+        }
+
+        @Test
+        @WithMockUser(roles = ADMIN)
+        @DisplayName("415 – unsupported content type is not a 500")
+        void unsupportedContentType() throws Exception {
+            mockMvc.perform(post("/admin/categories")
+                            .contentType(MediaType.TEXT_PLAIN)
+                            .content("hola"))
+                    .andExpect(status().isUnsupportedMediaType());
+            verifyNoInteractions(categoryService);
         }
     }
 }

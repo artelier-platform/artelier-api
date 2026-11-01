@@ -2,6 +2,7 @@ package com.artelier.api.controller;
 
 import com.artelier.api.config.JacksonTestConfig;
 import com.artelier.api.config.SecurityConfig;
+import com.artelier.api.config.WithSecurity;
 import com.artelier.api.dto.request.PaymentRequest;
 import com.artelier.api.dto.request.PaymentWebhookRequest;
 import com.artelier.api.dto.response.PaymentResponse;
@@ -20,6 +21,7 @@ import com.artelier.api.integration.wompi.enums.PaymentStatus;
 import com.artelier.api.integration.wompi.exception.WompiException;
 import com.artelier.api.integration.wompi.service.WompiSignatureValidator;
 import com.artelier.api.repository.UserRepository;
+import com.artelier.api.security.CustomAuthenticationEntryPoint;
 import com.artelier.api.security.JwtUtil;
 import com.artelier.api.security.UserPrincipal;
 import com.artelier.api.service.PaymentService;
@@ -68,7 +70,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * for {@code POST /payments/webhook}; the anonymous-access test is disabled until it is added.</p>
  */
 @WebMvcTest(PaymentController.class)
-@Import({SecurityConfig.class, JacksonTestConfig.class})
+@WithSecurity
 @DisplayName("PaymentController")
 class PaymentControllerTest {
 
@@ -83,11 +85,6 @@ class PaymentControllerTest {
     @MockitoBean
     private WompiSignatureValidator signatureValidator;
 
-    @MockitoBean
-    private JwtUtil jwtUtil;
-
-    @MockitoBean
-    private UserRepository userRepository;
 
     private final UserPrincipal buyer = principal(Role.BUYER, "buyer@artelier.com");
     private final UserPrincipal admin = principal(Role.ADMIN, "admin@artelier.com");
@@ -301,7 +298,6 @@ class PaymentControllerTest {
          * {@code .requestMatchers(HttpMethod.POST, "/payments/webhook").permitAll()}.
          */
         @Test
-        @Disabled("SecurityConfig does not permit POST /payments/webhook yet")
         @DisplayName("200 – anonymous caller (Wompi) reaches the webhook")
         void anonymousCanCallWebhook() throws Exception {
             when(signatureValidator.isValid(any())).thenReturn(true);

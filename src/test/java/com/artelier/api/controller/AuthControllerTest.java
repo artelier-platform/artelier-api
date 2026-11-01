@@ -1,11 +1,13 @@
 package com.artelier.api.controller;
 
 import com.artelier.api.config.SecurityConfig;
+import com.artelier.api.config.WithSecurity;
 import com.artelier.api.dto.request.LoginRequest;
 import com.artelier.api.dto.request.RegisterRequest;
 import com.artelier.api.dto.response.AuthResponse;
 import com.artelier.api.exception.ArtelierException;
 import com.artelier.api.repository.UserRepository;
+import com.artelier.api.security.CustomAuthenticationEntryPoint;
 import com.artelier.api.security.JwtUtil;
 import com.artelier.api.service.AuthService;
 import org.junit.jupiter.api.DisplayName;
@@ -32,7 +34,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(AuthController.class)
-@Import(SecurityConfig.class)
+@WithSecurity
 @DisplayName("AuthController")
 class AuthControllerTest {
 
@@ -42,9 +44,9 @@ class AuthControllerTest {
     // The controller only injects AuthService.
     @MockitoBean private AuthService authService;
 
-    // Security dependencies (JwtFilter / SecurityConfig).
-    @MockitoBean private JwtUtil jwtUtil;
-    @MockitoBean private UserRepository userRepository;
+    @MockitoBean
+    private CustomAuthenticationEntryPoint authenticationEntryPoint;
+
 
     // =========================================================
     // Fixtures

@@ -2,12 +2,14 @@ package com.artelier.api.controller;
 
 import com.artelier.api.config.JacksonTestConfig;
 import com.artelier.api.config.SecurityConfig;
+import com.artelier.api.config.WithSecurity;
 import com.artelier.api.dto.response.CategoryResponse;
 import com.artelier.api.dto.response.ProductImageResponse;
 import com.artelier.api.dto.response.ProductResponse;
 import com.artelier.api.enums.StockType;
 import com.artelier.api.exception.ArtelierException;
 import com.artelier.api.repository.UserRepository;
+import com.artelier.api.security.CustomAuthenticationEntryPoint;
 import com.artelier.api.security.JwtUtil;
 import com.artelier.api.service.ProductService;
 import org.junit.jupiter.api.DisplayName;
@@ -56,6 +58,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @WebMvcTest(ProductController.class)
 @Import({SecurityConfig.class, JacksonTestConfig.class})
+@WithSecurity
 @DisplayName("ProductController")
 class ProductControllerTest {
 
@@ -69,11 +72,6 @@ class ProductControllerTest {
     @MockitoBean
     private ProductService productService;
 
-    @MockitoBean
-    private JwtUtil jwtUtil;
-
-    @MockitoBean
-    private UserRepository userRepository;
 
     // ------------------------------------------------------------------ fixtures
 

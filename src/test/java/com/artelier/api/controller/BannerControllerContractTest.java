@@ -1,10 +1,12 @@
 package com.artelier.api.controller;
 
 import com.artelier.api.config.JacksonTestConfig;
+import com.artelier.api.config.WithSecurity;
 import com.artelier.api.dto.response.BannerResponse;
 import com.artelier.api.dto.response.ItemBannerResponse;
 import com.artelier.api.exception.ArtelierException;
 import com.artelier.api.repository.UserRepository;
+import com.artelier.api.security.CustomAuthenticationEntryPoint;
 import com.artelier.api.security.JwtUtil;
 import com.artelier.api.service.BannerService;
 import org.junit.jupiter.api.DisplayName;
@@ -39,6 +41,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(BannerController.class)
 @AutoConfigureMockMvc(addFilters = false)
 @Import(JacksonTestConfig.class)
+@WithSecurity
 @DisplayName("BannerController – GET /banners contract")
 class BannerControllerContractTest {
 
@@ -50,11 +53,6 @@ class BannerControllerContractTest {
     @MockitoBean
     private BannerService bannerService;
 
-    @MockitoBean
-    private JwtUtil jwtUtil;
-
-    @MockitoBean
-    private UserRepository userRepository;
 
     private static ItemBannerResponse simpleItem(int sortOrder, String title) {
         return new ItemBannerResponse(

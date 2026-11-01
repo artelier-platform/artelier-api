@@ -2,6 +2,7 @@ package com.artelier.api.controller;
 
 import com.artelier.api.config.JacksonTestConfig;
 import com.artelier.api.config.SecurityConfig;
+import com.artelier.api.config.WithSecurity;
 import com.artelier.api.dto.request.OrderRequest;
 import com.artelier.api.dto.response.OrderItemResponse;
 import com.artelier.api.dto.response.OrderResponse;
@@ -10,6 +11,7 @@ import com.artelier.api.enums.OrderStatus;
 import com.artelier.api.enums.Role;
 import com.artelier.api.exception.ArtelierException;
 import com.artelier.api.repository.UserRepository;
+import com.artelier.api.security.CustomAuthenticationEntryPoint;
 import com.artelier.api.security.JwtUtil;
 import com.artelier.api.security.UserPrincipal;
 import com.artelier.api.service.OrderService;
@@ -57,7 +59,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * {@code @AuthenticationPrincipal}.
  */
 @WebMvcTest(OrderController.class)
-@Import({SecurityConfig.class, JacksonTestConfig.class})
+@WithSecurity
 @DisplayName("OrderController")
 class OrderControllerTest {
 
@@ -69,11 +71,6 @@ class OrderControllerTest {
     @MockitoBean
     private OrderService orderService;
 
-    @MockitoBean
-    private JwtUtil jwtUtil;
-
-    @MockitoBean
-    private UserRepository userRepository;
 
     private final UserPrincipal buyer = principal(Role.BUYER, "buyer@artelier.com");
     private final UserPrincipal admin = principal(Role.ADMIN, "admin@artelier.com");

@@ -2,9 +2,11 @@ package com.artelier.api.controller;
 
 import com.artelier.api.config.JacksonTestConfig;
 import com.artelier.api.config.SecurityConfig;
+import com.artelier.api.config.WithSecurity;
 import com.artelier.api.dto.response.CategoryResponse;
 import com.artelier.api.exception.ArtelierException;
 import com.artelier.api.repository.UserRepository;
+import com.artelier.api.security.CustomAuthenticationEntryPoint;
 import com.artelier.api.security.JwtUtil;
 import com.artelier.api.service.CategoryService;
 import org.junit.jupiter.api.DisplayName;
@@ -38,7 +40,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * (filters enabled), so every contract test is also an anonymous-access test of the public endpoint.
  */
 @WebMvcTest(CategoryController.class)
-@Import({SecurityConfig.class, JacksonTestConfig.class})
+@WithSecurity
 @DisplayName("CategoryController")
 class CategoryControllerTest {
 
@@ -47,12 +49,6 @@ class CategoryControllerTest {
 
     @MockitoBean
     private CategoryService categoryService;
-
-    @MockitoBean
-    private JwtUtil jwtUtil;
-
-    @MockitoBean
-    private UserRepository userRepository;
 
     private static CategoryResponse category(UUID id, String name, String slug, String description) {
         return new CategoryResponse(id, name, slug, description);

@@ -2,7 +2,9 @@ package com.artelier.api.controller;
 
 import com.artelier.api.config.JacksonTestConfig;
 import com.artelier.api.config.SecurityConfig;
+import com.artelier.api.config.WithSecurity;
 import com.artelier.api.repository.UserRepository;
+import com.artelier.api.security.CustomAuthenticationEntryPoint;
 import com.artelier.api.security.JwtUtil;
 import com.artelier.api.service.ProductService;
 import org.junit.jupiter.api.DisplayName;
@@ -13,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -29,7 +32,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * whether {@code GlobalExceptionHandler}'s catch-all {@code Exception} handler turns them into 500.
  */
 @WebMvcTest(ProductController.class)
-@Import({SecurityConfig.class, JacksonTestConfig.class})
+@WithSecurity
 @DisplayName("ProductController – unmapped routes")
 class ProductControllerRoutingTest {
 
@@ -38,12 +41,6 @@ class ProductControllerRoutingTest {
 
     @MockitoBean
     private ProductService productService;
-
-    @MockitoBean
-    private JwtUtil jwtUtil;
-
-    @MockitoBean
-    private UserRepository userRepository;
 
     @ParameterizedTest(name = "{0} {1} -> 405")
     @CsvSource({
@@ -56,7 +53,8 @@ class ProductControllerRoutingTest {
             "DELETE, /products/handmade-ceramic-mug",
             "PATCH,  /products/handmade-ceramic-mug"
     })
-    @DisplayName("405 – unsupported method on a public product route")
+    @WithMockUser(roles = "BUYER")
+    @DisplayName("405 – unsupported method on a product route (authenticated)")
     void unsupportedMethod(String method, String uri) throws Exception {
         mockMvc.perform(request(HttpMethod.valueOf(method), uri))
                 .andExpect(status().isMethodNotAllowed())
@@ -64,6 +62,18 @@ class ProductControllerRoutingTest {
 
         verifyNoInteractions(productService);
     }
+
+    @ParameterizedTest(name = "{0} {1} -> 401")
+    @CsvSource({ "POST, /products", "PUT, /products/handmade-ceramic-mug" })
+    @DisplayName("401 – anonymous non-GET is rejected before routing")
+    void anonymousNonGet_isUnauthorized(String method, String uri) throws Exception {
+        mockMvc.perform(request(HttpMethod.valueOf(method), uri))
+                .andExpect(status().isUnauthorized());
+        verifyNoInteractions(productService);
+    }
+
+
+
 
     @ParameterizedTest(name = "GET {0} -> 404")
     @CsvSource({
