@@ -1,19 +1,25 @@
-
 package com.artelier.api.dto.response;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
 /**
- * Response returned after a successful authentication.
+ * Response returned after successful user authentication.
  *
- * @param token JWT access token
- * @param role user role
- * @param refreshToken token used to refresh authentication
- * @param expiresIn access token lifetime in seconds
+ * <p>Contains the JWT access token, refresh token, token type,
+ * access token lifetime, and authenticated user's profile.</p>
+ *
+ * <p>Both tokens are sensitive credentials and must never be logged
+ * or exposed in application logs.</p>
+ *
+ * @param accessToken  JWT access token used to authenticate API requests
+ * @param refreshToken token used to renew the authentication session
+ * @param tokenType    authentication scheme used by the access token
+ * @param expiresIn    access token lifetime in seconds
+ * @param user         authenticated user's profile information
  */
 @Schema(
         name = "AuthResponse",
-        description = "Authentication response containing JWT tokens and session metadata"
+        description = "Authentication response containing tokens and user information"
 )
 public record AuthResponse(
 
@@ -22,34 +28,42 @@ public record AuthResponse(
                 example = "eyJhbGciOiJIUzI1NiJ9.example",
                 requiredMode = Schema.RequiredMode.REQUIRED
         )
-        String token,
+        String accessToken,
 
         @Schema(
-                description = "User role",
-                example = "BUYER",
-                allowableValues = {"ADMIN", "BUYER"},
-                requiredMode = Schema.RequiredMode.REQUIRED
-        )
-        String role,
-
-        @Schema(
-                description = "Refresh token",
+                description = "Refresh token used to renew the authentication session",
                 example = "refreshTokenExample",
                 requiredMode = Schema.RequiredMode.REQUIRED
         )
         String refreshToken,
 
         @Schema(
-                description = "Access token expiration in seconds",
+                description = "Authentication scheme",
+                example = "Bearer",
+                requiredMode = Schema.RequiredMode.REQUIRED
+        )
+        String tokenType,
+
+        @Schema(
+                description = "Access token expiration time in seconds",
                 example = "3600",
                 requiredMode = Schema.RequiredMode.REQUIRED
         )
-        long expiresIn
+        long expiresIn,
+
+        @Schema(
+                description = "Authenticated user's profile",
+                requiredMode = Schema.RequiredMode.REQUIRED
+        )
+        UserProfileResponse user
 
 ) {
+
     @Override
     public String toString() {
-        return "AuthResponse[token=***, role=" + role
-                + ", refreshToken=***, expiresIn=" + expiresIn + "]";
+        return "AuthResponse[accessToken=***, refreshToken=***"
+                + ", tokenType=" + tokenType
+                + ", expiresIn=" + expiresIn
+                + ", user=" + user + "]";
     }
 }

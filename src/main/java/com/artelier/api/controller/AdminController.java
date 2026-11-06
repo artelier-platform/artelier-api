@@ -172,7 +172,7 @@ public class AdminController {
             )
             @PathVariable UUID id
     ) {
-        userService.setBanned(id, true);
+        userService.suspend(id);
 
         return ResponseEntity.ok(
                 AppResponse.success("User banned")
@@ -250,7 +250,7 @@ public class AdminController {
             )
             @PathVariable UUID id
     ) {
-        userService.setBanned(id, false);
+        userService.activate(id);
 
         return ResponseEntity.ok(
                 AppResponse.success("User unbanned")
@@ -262,7 +262,7 @@ public class AdminController {
      *
      * @param page zero-based page index; must not be negative
      * @param size number of users per page; must be between 1 and 100
-     * @return {@code 200} with a {@link Page} of {@link UserResponse}
+     * @return {@code 200} with a {@link Page} of {@link UserProfileResponse}
      */
     @GetMapping("/users")
     @PreAuthorize("hasRole('ADMIN')")
@@ -350,7 +350,7 @@ public class AdminController {
     @ApiResponse(responseCode = "401", description = DESC_UNAUTHORIZED)
     @ApiResponse(responseCode = "403", description = DESC_FORBIDDEN)
     @ApiResponse(responseCode = "500", description = DESC_SERVER_ERROR)
-    public ResponseEntity<AppResponse<Page<UserResponse>>> listUsers(
+    public ResponseEntity<AppResponse<Page<UserProfileResponse>>> listUsers(
             @Parameter(
                     description = "Zero-based page index; must not be negative",
                     in = ParameterIn.QUERY,

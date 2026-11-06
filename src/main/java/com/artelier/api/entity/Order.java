@@ -37,6 +37,9 @@ public class Order {
     @Column(nullable = false)
     private String customerEmail;
 
+    @Column(name = "contact_phone", length = 20)
+    private String contactPhone;
+
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal subtotal;
 

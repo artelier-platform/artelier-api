@@ -22,8 +22,10 @@ public class Payment {
     @GeneratedValue
     private UUID id;
 
-    @OneToOne
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "order_id", nullable = false)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     private Order order;
 
     @Column(name = "wompi_transaction_id")
@@ -45,5 +47,13 @@ public class Payment {
     @Column(name = "redirect_url")
     private String redirectUrl;
 
-    private Instant paidAt;
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private Instant createdAt;
+
+    @PrePersist
+    protected void onCreate() {
+        if (createdAt == null) {
+            createdAt = Instant.now();
+        }
+    }
 }
