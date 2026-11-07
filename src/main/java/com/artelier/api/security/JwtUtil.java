@@ -21,18 +21,16 @@ public class JwtUtil {
         return Keys.hmacShaKeyFor(secret.getBytes());
     }
 
-    public String generateAccessToken(UUID userId, UUID sessionId) {
+    public String generateAccessToken(UUID userId, UUID sessionId, String role) {
         throw new UnsupportedOperationException("TODO");
     }
 
-    public String extractUsername(String token) {
-        return Jwts.parser()
-                .verifyWith(getKey())
-                .build()
-                .parseSignedClaims(token)
-                .getPayload()
-                .getSubject();
-    }
+    public UUID extractUserId(String token)    { throw new UnsupportedOperationException("TODO"); }
+
+    public UUID extractSessionId(String token) { throw new UnsupportedOperationException("TODO"); }
+
+    public String extractRole(String token)    { throw new UnsupportedOperationException("TODO"); }
+
 
     public boolean validateToken(String token) {
         try {

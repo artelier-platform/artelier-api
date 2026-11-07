@@ -11,9 +11,9 @@ import java.util.UUID;
 
 public interface OrderService {
 
-    OrderResponse createOrder(OrderRequest request, String userEmail);
+    OrderResponse createOrder(OrderRequest request, UUID userId);
 
-    List<OrderResponse> getMyOrders(String userEmail);
+    List<OrderResponse> getMyOrders(UUID userId);
 
     Page<OrderResponse> getAllOrders(OrderStatus status, Pageable pageable, User requester);
 

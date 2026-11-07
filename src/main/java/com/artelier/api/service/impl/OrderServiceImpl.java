@@ -34,71 +34,15 @@ public class OrderServiceImpl implements OrderService {
     private final ProductRepository productRepository;
     private final String ORDER_NOT_FOUND = "Order not found";
 
+
     @Override
-    @Transactional
-    public OrderResponse createOrder(OrderRequest request, String userEmail) {
-
-        User user = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> ArtelierException.notFound("User not found"));
-
-        Order order = Order.builder()
-                .user(user)
-                .status(OrderStatus.PENDING_PAYMENT)
-                .shippingAddress(request.shippingAddress())
-                .notes(request.notes())
-                .customerEmail(userEmail)
-                .build();
-
-        BigDecimal subtotal = BigDecimal.ZERO;
-
-        for (OrderRequest.OrderItemRequest itemRequest : request.items()) {
-            Product product = productRepository.findById(itemRequest.productId())
-                    .orElseThrow(() -> ArtelierException.notFound("Product not found"));
-
-            if (!product.getIsActive()) throw ArtelierException.badRequest("Product is not available");
-
-            if (product.getStockType() != StockType.UNLIMITED) {
-                int available = product.getStockQuantity() != null ? product.getStockQuantity() : 0;
-                if (available < itemRequest.quantity()) {
-                    throw ArtelierException.badRequest(
-                            "Insufficient stock for product: " + product.getName()
-                                    + " (available: " + available + ")"
-                    );
-                }
-                product.setStockQuantity(available - itemRequest.quantity());
-            }
-
-            BigDecimal unitPrice = product.getPrice();
-            BigDecimal itemTotal = unitPrice.multiply(BigDecimal.valueOf(itemRequest.quantity()));
-            subtotal = subtotal.add(itemTotal);
-
-            OrderItem orderItem = OrderItem.builder()
-                    .order(order)
-                    .product(product)
-                    .quantity(itemRequest.quantity())
-                    .unitPrice(unitPrice)
-                    .customNotes(itemRequest.customNotes())
-                    .build();
-
-            order.getItems().add(orderItem);
-        }
-
-        order.setSubtotal(subtotal);
-        order.setTotal(subtotal);
-
-        Order savedOrder = orderRepository.save(order);
-
-        return orderMapper.toResponse(savedOrder);
+    public OrderResponse createOrder(OrderRequest request, UUID userId) {
+        return null;
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public List<OrderResponse> getMyOrders(String userEmail) {
-
-        return orderRepository.findByUserEmailOrderByCreatedAtDesc(userEmail)
-                .stream()
-                .map(orderMapper::toResponse)
-                .toList();
+    public List<OrderResponse> getMyOrders(UUID userId) {
+        return List.of();
     }
 
     @Override

@@ -212,14 +212,14 @@ class AdminControllerTest {
         @WithMockUser(roles = ADMIN)
         void banUser_success() throws Exception {
             UUID id = UUID.randomUUID();
-            doNothing().when(userService).setBanned(id, true);
+            doNothing().when(userService).suspend(id);
 
             mockMvc.perform(patch("/admin/users/{id}/ban", id).with(csrf()))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.message").value("User banned"))
                     .andExpect(jsonPath("$.data").doesNotExist());
 
-            verify(userService).setBanned(id, true);
+            verify(userService).suspend(id);
         }
 
         @Test
@@ -244,14 +244,14 @@ class AdminControllerTest {
         @WithMockUser(roles = ADMIN)
         void unbanUser_success() throws Exception {
             UUID id = UUID.randomUUID();
-            doNothing().when(userService).setBanned(id, false);
+            doNothing().when(userService).activate(id);
 
             mockMvc.perform(patch("/admin/users/{id}/unban", id).with(csrf()))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.message").value("User unbanned"))
                     .andExpect(jsonPath("$.data").doesNotExist());
 
-            verify(userService).setBanned(id, false);
+            verify(userService).activate(id);
         }
     }
 

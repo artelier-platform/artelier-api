@@ -9,6 +9,7 @@ import com.artelier.api.dto.response.PaymentResponse;
 import com.artelier.api.entity.User;
 import com.artelier.api.enums.OrderStatus;
 import com.artelier.api.enums.Role;
+import com.artelier.api.enums.UserStatus;
 import com.artelier.api.exception.ArtelierException;
 import com.artelier.api.exception.InvalidOrderStateException;
 import com.artelier.api.exception.PaymentNotFoundException;
@@ -86,17 +87,21 @@ class PaymentControllerTest {
     private WompiSignatureValidator signatureValidator;
 
 
-    private final UserPrincipal buyer = principal(Role.BUYER, "buyer@artelier.com");
-    private final UserPrincipal admin = principal(Role.ADMIN, "admin@artelier.com");
+    private final UserPrincipal buyer = principal(Role.BUYER, "buyer");
+    private final UserPrincipal admin = principal(Role.ADMIN, "admin");
+    private final UUID buyerId = buyer.getUser().getId();
+    private final UUID adminId = admin.getUser().getId();
 
     // ------------------------------------------------------------------ fixtures
 
-    private static UserPrincipal principal(Role role, String email) {
-        User user = new User();
-        user.setId(UUID.randomUUID());
-        user.setEmail(email);
-        user.setPasswordHash("hash");
-        user.setRole(role);
+    private static UserPrincipal principal(Role role, String username) {
+        User user = User.builder()
+                .id(UUID.randomUUID())
+                .username(username)
+                .passwordHash("hash")
+                .role(role)
+                .status(UserStatus.ACTIVE)
+                .build();
         return new UserPrincipal(user);
     }
 

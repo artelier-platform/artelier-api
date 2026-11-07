@@ -9,6 +9,7 @@ import lombok.*;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Entity
@@ -126,5 +127,13 @@ public class User {
 
     public boolean isActive() {
         return status == UserStatus.ACTIVE;
+    }
+
+    public Optional<String> getPrimaryEmail() {
+        return emails.stream()
+                .filter(UserEmail::isVerified)
+                .filter(UserEmail::isPrimary)
+                .map(UserEmail::getEmail)
+                .findFirst();
     }
 }

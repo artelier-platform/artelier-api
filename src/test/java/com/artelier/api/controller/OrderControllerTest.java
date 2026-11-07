@@ -9,6 +9,7 @@ import com.artelier.api.dto.response.OrderResponse;
 import com.artelier.api.entity.User;
 import com.artelier.api.enums.OrderStatus;
 import com.artelier.api.enums.Role;
+import com.artelier.api.enums.UserStatus;
 import com.artelier.api.exception.ArtelierException;
 import com.artelier.api.repository.UserRepository;
 import com.artelier.api.security.CustomAuthenticationEntryPoint;
@@ -72,17 +73,21 @@ class OrderControllerTest {
     private OrderService orderService;
 
 
-    private final UserPrincipal buyer = principal(Role.BUYER, "buyer@artelier.com");
-    private final UserPrincipal admin = principal(Role.ADMIN, "admin@artelier.com");
+    private final UserPrincipal buyer = principal(Role.BUYER, "buyer");
+    private final UserPrincipal admin = principal(Role.ADMIN, "admin");
+    private final UUID buyerId = buyer.getUser().getId();
+    private final UUID adminId = admin.getUser().getId();
 
     // ------------------------------------------------------------------ helpers
 
-    private static UserPrincipal principal(Role role, String email) {
-        User user = new User();
-        user.setId(UUID.randomUUID());
-        user.setEmail(email);
-        user.setPasswordHash("hash");
-        user.setRole(role);
+    private static UserPrincipal principal(Role role, String username) {
+        User user = User.builder()
+                .id(UUID.randomUUID())
+                .username(username)
+                .passwordHash("hash")
+                .role(role)
+                .status(UserStatus.ACTIVE)
+                .build();
         return new UserPrincipal(user);
     }
 
@@ -156,7 +161,7 @@ class OrderControllerTest {
         void success() throws Exception {
             UUID productId = UUID.randomUUID();
             UUID orderId = UUID.randomUUID();
-            when(orderService.createOrder(any(), eq("buyer@artelier.com")))
+            when(orderService.createOrder(any(), eq(buyerId)))
                     .thenReturn(order(orderId, OrderStatus.PENDING_PAYMENT));
 
             mockMvc.perform(post("/orders")
@@ -180,7 +185,7 @@ class OrderControllerTest {
                     .andExpect(jsonPath("$.data.items[0].customNotes").value("Gift wrap"));
 
             ArgumentCaptor<OrderRequest> captor = ArgumentCaptor.forClass(OrderRequest.class);
-            verify(orderService).createOrder(captor.capture(), eq("buyer@artelier.com"));
+            verify(orderService).createOrder(captor.capture(), eq(buyerId));
             OrderRequest received = captor.getValue();
             assertThat(received.shippingAddress()).isEqualTo("Cra 123 #45-67, Bogotá, Colombia");
             assertThat(received.notes()).isEqualTo("Please deliver after 5 PM");
@@ -310,7 +315,7 @@ class OrderControllerTest {
         void success() throws Exception {
             UUID first = UUID.randomUUID();
             UUID second = UUID.randomUUID();
-            when(orderService.getMyOrders("buyer@artelier.com"))
+            when(orderService.getMyOrders(buyerId))
                     .thenReturn(List.of(order(first, OrderStatus.PAID), order(second, OrderStatus.SHIPPED)));
 
             mockMvc.perform(get("/orders/my").with(user(buyer)))
@@ -323,19 +328,19 @@ class OrderControllerTest {
                     .andExpect(jsonPath("$.data[1].id").value(second.toString()))
                     .andExpect(jsonPath("$.data[1].status").value("SHIPPED"));
 
-            verify(orderService).getMyOrders("buyer@artelier.com");
+            verify(orderService).getMyOrders(adminId);
         }
 
         @Test
         @DisplayName("200 – ADMIN also receives only the orders of their own account")
         void adminGetsOwnOrders() throws Exception {
-            when(orderService.getMyOrders("admin@artelier.com")).thenReturn(List.of());
+            when(orderService.getMyOrders(buyerId)).thenReturn(List.of());
 
             mockMvc.perform(get("/orders/my").with(user(admin)))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.length()").value(0));
 
-            verify(orderService).getMyOrders("admin@artelier.com");
+            verify(orderService).getMyOrders(adminId);
         }
 
         @Test

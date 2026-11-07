@@ -32,12 +32,12 @@ public record UserPrincipal(User user) implements UserDetails {
 
     @Override
     public @NonNull String getUsername() {
-        return user.getEmail();
+        return user.getUsername();
     }
 
     @Override
     public boolean isAccountNonLocked() {
-        return !user.isBanned();
+        return !user.isActive();
     }
 
     @Override

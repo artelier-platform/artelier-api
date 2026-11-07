@@ -78,9 +78,15 @@ public class PaymentServiceImpl implements PaymentService {
         WompiAcceptanceTokens tokens = acceptanceTokenService.getTokens();
         String signature             = signatureUtil.generate(reference, amountInCents, CURRENCY);
 
+        String customerEmail = order.getUser().getPrimaryEmail().orElse(null);
+
+        if (customerEmail == null || customerEmail.isBlank()) {
+            throw new IllegalStateException("User has no primary email for payment");
+        }
+
         WompiTransactionRequest wompiRequest = buildWompiRequest(
                 tokens, amountInCents, reference, signature,
-                order.getUser().getEmail(),
+                customerEmail,
                 request,
                 clientIp
         );

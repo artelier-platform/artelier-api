@@ -272,7 +272,7 @@ public class OrderController {
     ) {
         return ResponseEntity.ok(AppResponse.success(
                 "Order created successfully",
-                orderService.createOrder(request, principal.getUsername())
+                orderService.createOrder(request, principal.getUser().getId())
         ));
     }
 
@@ -340,7 +340,7 @@ public class OrderController {
     ) {
         return ResponseEntity.ok(AppResponse.success(
                 "Orders fetched",
-                orderService.getMyOrders(principal.getUsername())
+                orderService.getMyOrders(principal.getUser().getId())
         ));
     }
 

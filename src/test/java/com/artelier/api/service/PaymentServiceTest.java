@@ -6,8 +6,11 @@ import com.artelier.api.dto.response.PaymentResponse;
 import com.artelier.api.entity.Order;
 import com.artelier.api.entity.Payment;
 import com.artelier.api.entity.User;
+import com.artelier.api.entity.UserEmail;
 import com.artelier.api.enums.OrderStatus;
 import com.artelier.api.enums.Role;
+import com.artelier.api.enums.UserStatus;
+import com.artelier.api.exception.ArtelierException;
 import com.artelier.api.exception.InvalidOrderStateException;
 import com.artelier.api.exception.OrderNotFoundException;
 import com.artelier.api.exception.PaymentNotFoundException;
@@ -47,6 +50,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -62,11 +66,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.inOrder;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 /**
  * Business logic of {@link PaymentServiceImpl} beyond order ownership (covered by
@@ -107,11 +107,15 @@ class PaymentServiceTest {
     // ------------------------------------------------------------------ fixtures
 
     private static User user() {
-        User user = new User();
-        user.setId(UUID.randomUUID());
-        user.setEmail("buyer@artelier.com");
-        user.setRole(Role.BUYER);
-        return user;
+        return User.builder()
+                .id(UUID.randomUUID())
+                .username("buyer")
+                .role(Role.BUYER)
+                .status(UserStatus.ACTIVE)
+                .emails(new ArrayList<>(List.of(UserEmail.builder()
+                        .id(UUID.randomUUID()).email("buyer@artelier.com")
+                        .isPrimary(true).isVerified(true).verifiedAt(Instant.now()).build())))
+                .build();
     }
 
     private Order order(OrderStatus status, BigDecimal total) {
@@ -238,7 +242,7 @@ class PaymentServiceTest {
             assertEquals("personal-auth-token", sent.getAcceptPersonalAuth());
             assertEquals(TOTAL_IN_CENTS, sent.getAmountInCents());
             assertEquals("COP", sent.getCurrency());
-            assertEquals(owner.getEmail(), sent.getCustomerEmail());
+            assertEquals("buyer@artelier.com", sent.getCustomerEmail());
             assertEquals("integrity-signature", sent.getSignature());
             assertSame(request.paymentMethod(), sent.getPaymentMethod());
             assertEquals(REDIRECT_URL, sent.getRedirectUrl());
@@ -428,6 +432,47 @@ class PaymentServiceTest {
             verify(orderService, never()).updateOrderStatusInternal(any(), any());
             verify(paymentRepository, never()).save(any(Payment.class));
         }
+
+        @ParameterizedTest(name = "requester {0}")
+        @EnumSource(value = UserStatus.class, names = {"PENDING_VERIFICATION", "SUSPENDED"})
+        @DisplayName("403 – only an ACTIVE account can start a payment: Wompi is never called")
+        void onlyActiveAccountsCanPay(UserStatus status) {
+            User requester = user();
+            requester.setStatus(status);
+
+            ArtelierException ex = assertThrows(ArtelierException.class,
+                    () -> service.createPendingPayment(orderId, cardRequest(), CLIENT_IP, requester));
+
+            assertEquals(HttpStatus.FORBIDDEN, ex.getStatus());
+            verifyNoInteractions(wompiClient, signatureUtil, paymentMapper);
+            verify(orderService, never()).updateOrderStatusInternal(any(), any());
+            verify(paymentRepository, never()).save(any(Payment.class));
+        }
+
+        @Test
+        @DisplayName("409 – the order owner has no primary email: a clear error, not a 500; Wompi is never called")
+        void ownerWithoutPrimaryEmail() {
+            User noEmail = user();
+            noEmail.getEmails().clear();
+            Order order = Order.builder().id(orderId).user(noEmail)
+                    .status(OrderStatus.PENDING_PAYMENT).subtotal(TOTAL).total(TOTAL).build();
+            when(paymentRepository.findActiveByOrderId(orderId)).thenReturn(Optional.empty());
+            when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
+            // Lenient: the service may fail before or after reading the tokens and the signature.
+            lenient().when(acceptanceTokenService.getTokens())
+                    .thenReturn(new WompiAcceptanceTokens("acceptance-token", "personal-auth-token"));
+            lenient().when(signatureUtil.generate(anyString(), anyLong(), anyString()))
+                    .thenReturn("integrity-signature");
+
+            ArtelierException ex = assertThrows(ArtelierException.class,
+                    () -> service.createPendingPayment(orderId, cardRequest(), CLIENT_IP, owner));
+
+            assertEquals(HttpStatus.CONFLICT, ex.getStatus());
+            verifyNoInteractions(wompiClient);
+            verify(orderService, never()).updateOrderStatusInternal(any(), any());
+            verify(paymentRepository, never()).save(any(Payment.class));
+        }
+
     }
 
     // ------------------------------------------------------------------ confirmPayment

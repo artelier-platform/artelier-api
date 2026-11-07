@@ -5,9 +5,11 @@ import com.artelier.api.dto.response.OrderResponse;
 import com.artelier.api.entity.Order;
 import com.artelier.api.entity.Product;
 import com.artelier.api.entity.User;
+import com.artelier.api.entity.UserEmail;
 import com.artelier.api.enums.OrderStatus;
 import com.artelier.api.enums.Role;
 import com.artelier.api.enums.StockType;
+import com.artelier.api.enums.UserStatus;
 import com.artelier.api.exception.ArtelierException;
 import com.artelier.api.mapper.OrderMapper;
 import com.artelier.api.repository.OrderRepository;
@@ -20,6 +22,8 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.function.Executable;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -30,6 +34,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -78,11 +84,24 @@ class OrderServiceTest {
     // ---------------------------------------------------------------- helpers
 
     private static User user(Role role) {
-        User user = new User();
-        user.setId(UUID.randomUUID());
-        user.setEmail(role.name().toLowerCase() + "@artelier.com");
-        user.setRole(role);
-        return user;
+        String name = role.name().toLowerCase();
+        return User.builder()
+                .id(UUID.randomUUID())
+                .username(name)
+                .role(role)
+                .status(UserStatus.ACTIVE)
+                .emails(new ArrayList<>(List.of(primaryEmail(name + "@artelier.com"))))
+                .build();
+    }
+
+    private static UserEmail primaryEmail(String address) {
+        return UserEmail.builder()
+                .id(UUID.randomUUID())
+                .email(address)
+                .isPrimary(true)
+                .isVerified(true)
+                .verifiedAt(Instant.now())
+                .build();
     }
 
     private static Product product(String name, String price, StockType stockType, Integer stock, boolean active) {
@@ -138,12 +157,12 @@ class OrderServiceTest {
                     List.of(item(mug, 2, "Gift wrap")), "Cra 123 #45-67", "After 5 PM");
             OrderResponse expected = OrderResponse.builder().id(UUID.randomUUID()).build();
 
-            when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(buyer));
+            when(userRepository.findByPrimaryEmailIgnoreCase(EMAIL)).thenReturn(Optional.of(buyer));
             when(productRepository.findById(mug.getId())).thenReturn(Optional.of(mug));
             when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
             when(orderMapper.toResponse(any(Order.class))).thenReturn(expected);
 
-            OrderResponse result = orderService.createOrder(request, EMAIL);
+            OrderResponse result = orderService.createOrder(request, buyer.getId());
 
             assertSame(expected, result);
 
@@ -159,7 +178,7 @@ class OrderServiceTest {
             assertAmount("59.98", persisted.getTotal());
 
             assertEquals(1, persisted.getItems().size());
-            var persistedItem = persisted.getItems().get(0);
+            var persistedItem = persisted.getItems().getFirst();
             assertSame(persisted, persistedItem.getOrder());
             assertSame(mug, persistedItem.getProduct());
             assertEquals(2, persistedItem.getQuantity());
@@ -179,13 +198,13 @@ class OrderServiceTest {
             OrderRequest request = new OrderRequest(
                     List.of(item(mug, 3, null), item(plate, 2, null)), "Address", null);
 
-            when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(buyer));
+            when(userRepository.findByPrimaryEmailIgnoreCase(EMAIL)).thenReturn(Optional.of(buyer));
             when(productRepository.findById(mug.getId())).thenReturn(Optional.of(mug));
             when(productRepository.findById(plate.getId())).thenReturn(Optional.of(plate));
             when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
             when(orderMapper.toResponse(any(Order.class))).thenReturn(OrderResponse.builder().build());
 
-            orderService.createOrder(request, EMAIL);
+            orderService.createOrder(request, buyer.getId());
 
             ArgumentCaptor<Order> captor = ArgumentCaptor.forClass(Order.class);
             verify(orderRepository).save(captor.capture());
@@ -205,12 +224,12 @@ class OrderServiceTest {
             Product scarf = product("Scarf", "20.00", StockType.UNLIMITED, null, true);
             OrderRequest request = new OrderRequest(List.of(item(scarf, 100, null)), "Address", null);
 
-            when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(buyer));
+            when(userRepository.findByPrimaryEmailIgnoreCase(EMAIL)).thenReturn(Optional.of(buyer));
             when(productRepository.findById(scarf.getId())).thenReturn(Optional.of(scarf));
             when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
             when(orderMapper.toResponse(any(Order.class))).thenReturn(OrderResponse.builder().build());
 
-            orderService.createOrder(request, EMAIL);
+            orderService.createOrder(request, buyer.getId());
 
             ArgumentCaptor<Order> captor = ArgumentCaptor.forClass(Order.class);
             verify(orderRepository).save(captor.capture());
@@ -225,12 +244,12 @@ class OrderServiceTest {
             Product vase = product("Vase", "40.00", StockType.AVAILABLE, 2, true);
             OrderRequest request = new OrderRequest(List.of(item(vase, 2, null)), "Address", null);
 
-            when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(buyer));
+            when(userRepository.findByPrimaryEmailIgnoreCase(EMAIL)).thenReturn(Optional.of(buyer));
             when(productRepository.findById(vase.getId())).thenReturn(Optional.of(vase));
             when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
             when(orderMapper.toResponse(any(Order.class))).thenReturn(OrderResponse.builder().build());
 
-            orderService.createOrder(request, EMAIL);
+            orderService.createOrder(request, buyer.getId());
 
             assertEquals(0, vase.getStockQuantity());
         }
@@ -238,12 +257,13 @@ class OrderServiceTest {
         @Test
         @DisplayName("404 – unknown user: nothing else is touched")
         void userNotFound() {
+            UUID missingUser = UUID.randomUUID();
             OrderRequest request = new OrderRequest(
                     List.of(new OrderRequest.OrderItemRequest(UUID.randomUUID(), 1, null)), "Address", null);
-            when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.empty());
+            when(userRepository.findById(missingUser)).thenReturn(Optional.empty());
 
             assertArtelier(HttpStatus.NOT_FOUND, "User not found",
-                    () -> orderService.createOrder(request, EMAIL));
+                    () -> orderService.createOrder(request, missingUser));
 
             verifyNoInteractions(productRepository, orderRepository, orderMapper);
         }
@@ -256,11 +276,11 @@ class OrderServiceTest {
             OrderRequest request = new OrderRequest(
                     List.of(new OrderRequest.OrderItemRequest(missingId, 1, null)), "Address", null);
 
-            when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(buyer));
+            when(userRepository.findByPrimaryEmailIgnoreCase(EMAIL)).thenReturn(Optional.of(buyer));
             when(productRepository.findById(missingId)).thenReturn(Optional.empty());
 
             assertArtelier(HttpStatus.NOT_FOUND, "Product not found",
-                    () -> orderService.createOrder(request, EMAIL));
+                    () -> orderService.createOrder(request, buyer.getId()));
 
             verify(orderRepository, never()).save(any(Order.class));
             verifyNoInteractions(orderMapper);
@@ -273,11 +293,11 @@ class OrderServiceTest {
             Product retired = product("Retired Bowl", "15.00", StockType.AVAILABLE, 5, false);
             OrderRequest request = new OrderRequest(List.of(item(retired, 1, null)), "Address", null);
 
-            when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(buyer));
+            when(userRepository.findByPrimaryEmailIgnoreCase(EMAIL)).thenReturn(Optional.of(buyer));
             when(productRepository.findById(retired.getId())).thenReturn(Optional.of(retired));
 
             assertArtelier(HttpStatus.BAD_REQUEST, "Product is not available",
-                    () -> orderService.createOrder(request, EMAIL));
+                    () -> orderService.createOrder(request, buyer.getId()));
 
             verify(orderRepository, never()).save(any(Order.class));
             verifyNoInteractions(orderMapper);
@@ -290,12 +310,12 @@ class OrderServiceTest {
             Product mug = product("Ceramic Mug", "29.99", StockType.AVAILABLE, 1, true);
             OrderRequest request = new OrderRequest(List.of(item(mug, 2, null)), "Address", null);
 
-            when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(buyer));
+            when(userRepository.findByPrimaryEmailIgnoreCase(EMAIL)).thenReturn(Optional.of(buyer));
             when(productRepository.findById(mug.getId())).thenReturn(Optional.of(mug));
 
             assertArtelier(HttpStatus.BAD_REQUEST,
                     "Insufficient stock for product: Ceramic Mug (available: 1)",
-                    () -> orderService.createOrder(request, EMAIL));
+                    () -> orderService.createOrder(request, buyer.getId()));
 
             assertEquals(1, mug.getStockQuantity());
             verify(orderRepository, never()).save(any(Order.class));
@@ -309,15 +329,34 @@ class OrderServiceTest {
             Product mug = product("Ceramic Mug", "29.99", StockType.AVAILABLE, null, true);
             OrderRequest request = new OrderRequest(List.of(item(mug, 1, null)), "Address", null);
 
-            when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(buyer));
+            when(userRepository.findByPrimaryEmailIgnoreCase(EMAIL)).thenReturn(Optional.of(buyer));
             when(productRepository.findById(mug.getId())).thenReturn(Optional.of(mug));
 
             assertArtelier(HttpStatus.BAD_REQUEST,
                     "Insufficient stock for product: Ceramic Mug (available: 0)",
-                    () -> orderService.createOrder(request, EMAIL));
+                    () -> orderService.createOrder(request, buyer.getId()));
 
             verify(orderRepository, never()).save(any(Order.class));
         }
+
+        @ParameterizedTest(name = "account {0}")
+        @EnumSource(value = UserStatus.class, names = {"PENDING_VERIFICATION", "SUSPENDED"})
+        @DisplayName("403 – only ACTIVE accounts can place orders")
+        void onlyActiveAccountsCanOrder(UserStatus status) {
+            User buyer = user(Role.BUYER);
+            buyer.setStatus(status);
+            OrderRequest request = new OrderRequest(
+                    List.of(new OrderRequest.OrderItemRequest(UUID.randomUUID(), 1, null)), "Address", null);
+            when(userRepository.findById(buyer.getId())).thenReturn(Optional.of(buyer));
+
+            ArtelierException ex = assertThrows(ArtelierException.class,
+                    () -> orderService.createOrder(request, buyer.getId()));
+
+            assertEquals(HttpStatus.FORBIDDEN, ex.getStatus());
+            verifyNoInteractions(productRepository, orderRepository, orderMapper);
+        }
+
+
     }
 
     // ------------------------------------------------------------- getMyOrders
@@ -335,19 +374,21 @@ class OrderServiceTest {
             OrderResponse newerResponse = responseOf(newer);
             OrderResponse olderResponse = responseOf(older);
 
-            when(orderRepository.findByUserEmailOrderByCreatedAtDesc(EMAIL)).thenReturn(List.of(newer, older));
+            when(orderRepository.findByUserIdOrderByCreatedAtDesc(buyer.getId())).thenReturn(List.of(newer, older));
             when(orderMapper.toResponse(newer)).thenReturn(newerResponse);
             when(orderMapper.toResponse(older)).thenReturn(olderResponse);
 
-            assertEquals(List.of(newerResponse, olderResponse), orderService.getMyOrders(EMAIL));
+            assertEquals(List.of(newerResponse, olderResponse), orderService.getMyOrders(buyer.getId()));
         }
 
         @Test
         @DisplayName("returns an empty list when the user has no orders")
         void noOrders() {
-            when(orderRepository.findByUserEmailOrderByCreatedAtDesc(EMAIL)).thenReturn(List.of());
+            UUID randomUserId = UUID.randomUUID();
 
-            assertTrue(orderService.getMyOrders(EMAIL).isEmpty());
+            when(orderRepository.findByUserIdOrderByCreatedAtDesc(randomUserId)).thenReturn(List.of());
+
+            assertTrue(orderService.getMyOrders(randomUserId).isEmpty());
             verifyNoInteractions(orderMapper);
         }
     }

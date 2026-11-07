@@ -11,6 +11,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.UUID;
+
 @RequiredArgsConstructor
 @Service
 @Transactional
@@ -33,6 +35,11 @@ public class UserSessionServiceImpl implements UserSessionService {
 
     @Override
     public void revoke(String refreshToken, SessionRevocationReason reason) {
+        throw new UnsupportedOperationException("TODO");
+    }
+
+    @Override
+    public boolean isActive(UUID sessionId, UUID userId) {
         throw new UnsupportedOperationException("TODO");
     }
 }

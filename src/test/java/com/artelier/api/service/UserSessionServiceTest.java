@@ -279,4 +279,59 @@ class UserSessionServiceTest {
             assertThat(session.getRevocationReason()).isEqualTo(SessionRevocationReason.USER_LOGOUT);
         }
     }
+
+    // =========================================================
+    // isActive (used by JwtFilter on every request)
+    // =========================================================
+
+    @Nested
+    @DisplayName("isActive")
+    class IsActive {
+
+        @Test
+        @DisplayName("true: the session exists, belongs to that user, is not revoked and not expired")
+        void returnsTrueForActiveSession() {
+            UserSession session = activeSession();
+            when(sessionRepository.findById(session.getId())).thenReturn(Optional.of(session));
+
+            assertThat(service.isActive(session.getId(), user.getId())).isTrue();
+        }
+
+        @Test
+        @DisplayName("false: unknown session")
+        void unknownSession() {
+            UUID id = UUID.randomUUID();
+            when(sessionRepository.findById(id)).thenReturn(Optional.empty());
+
+            assertThat(service.isActive(id, user.getId())).isFalse();
+        }
+
+        @Test
+        @DisplayName("false: the session belongs to another user")
+        void sessionOfAnotherUser() {
+            UserSession session = activeSession();
+            when(sessionRepository.findById(session.getId())).thenReturn(Optional.of(session));
+
+            assertThat(service.isActive(session.getId(), UUID.randomUUID())).isFalse();
+        }
+
+        @Test
+        @DisplayName("false: expired session")
+        void expiredSession() {
+            UserSession expired = sessionWith(Instant.now().minusSeconds(10), null, null);
+            when(sessionRepository.findById(expired.getId())).thenReturn(Optional.of(expired));
+
+            assertThat(service.isActive(expired.getId(), user.getId())).isFalse();
+        }
+
+        @Test
+        @DisplayName("false: revoked session")
+        void revokedSession() {
+            UserSession revoked = sessionWith(Instant.now().plus(1, ChronoUnit.DAYS),
+                    Instant.now().minusSeconds(10), SessionRevocationReason.USER_LOGOUT);
+            when(sessionRepository.findById(revoked.getId())).thenReturn(Optional.of(revoked));
+
+            assertThat(service.isActive(revoked.getId(), user.getId())).isFalse();
+        }
+    }
 }

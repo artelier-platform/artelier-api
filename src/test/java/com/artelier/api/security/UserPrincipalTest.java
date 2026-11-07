@@ -1,118 +1,96 @@
-
 package com.artelier.api.security;
 
 import com.artelier.api.entity.User;
 import com.artelier.api.enums.Role;
+import com.artelier.api.enums.UserStatus;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.security.core.GrantedAuthority;
 
-import java.util.Collection;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@DisplayName("UserPrincipal")
 class UserPrincipalTest {
 
     private User user;
-    private UserPrincipal userPrincipal;
+    private UserPrincipal principal;
 
     @BeforeEach
     void setUp() {
-        user = new User();
-        user.setEmail("test@artelier.com");
-        user.setPasswordHash("hashed-password");
-        user.setRole(Role.BUYER);
-        user.setBanned(false);
-
-        userPrincipal = new UserPrincipal(user);
+        user = User.builder()
+                .id(UUID.randomUUID())
+                .username("Geronimo01")
+                .passwordHash("hashed-password")
+                .role(Role.BUYER)
+                .status(UserStatus.ACTIVE)
+                .build();
+        principal = new UserPrincipal(user);
     }
 
     @Test
-    void getUser_ShouldReturnOriginalUser() {
-        // Act
-        User result = userPrincipal.getUser();
-
-        // Assert
-        assertThat(result).isSameAs(user);
+    @DisplayName("exposes the wrapped user through user() and getUser()")
+    void exposesUser() {
+        assertThat(principal.user()).isSameAs(user);
+        assertThat(principal.getUser()).isSameAs(user);
     }
 
-    @Test
-    void getAuthorities_ShouldReturnBuyerRole() {
-        // Act
-        Collection<? extends GrantedAuthority> authorities =
-                userPrincipal.getAuthorities();
+    @ParameterizedTest(name = "{0} → {1}")
+    @CsvSource({"BUYER, ROLE_BUYER", "ADMIN, ROLE_ADMIN"})
+    @DisplayName("the single authority is the role with the ROLE_ prefix")
+    void authorities(Role role, String expected) {
+        user.setRole(role);
 
-        // Assert
-        assertThat(authorities)
+        assertThat(principal.getAuthorities())
                 .extracting(GrantedAuthority::getAuthority)
-                .containsExactly("ROLE_BUYER");
+                .containsExactly(expected);
     }
 
     @Test
-    void getAuthorities_ShouldReturnAdminRole() {
-        // Arrange
-        user.setRole(Role.ADMIN);
-
-        // Act
-        Collection<? extends GrantedAuthority> authorities =
-                userPrincipal.getAuthorities();
-
-        // Assert
-        assertThat(authorities)
-                .extracting(GrantedAuthority::getAuthority)
-                .containsExactly("ROLE_ADMIN");
+    @DisplayName("password is the stored hash")
+    void password() {
+        assertThat(principal.getPassword()).isEqualTo("hashed-password");
     }
 
     @Test
-    void getPassword_ShouldReturnPasswordHash() {
-        // Act
-        String result = userPrincipal.getPassword();
+    @DisplayName("username is the account username, not an email")
+    void username() {
+        assertThat(principal.getUsername()).isEqualTo("Geronimo01");
+    }
 
-        // Assert
-        assertThat(result)
-                .isEqualTo("hashed-password");
+    @ParameterizedTest(name = "{0} → non locked: {1}")
+    @CsvSource({
+            "ACTIVE,               true",
+            "PENDING_VERIFICATION, true",
+            "SUSPENDED,            false"
+    })
+    @DisplayName("only a SUSPENDED account is locked")
+    void accountNonLocked(UserStatus status, boolean expected) {
+        user.setStatus(status);
+
+        assertThat(principal.isAccountNonLocked()).isEqualTo(expected);
+    }
+
+    @ParameterizedTest(name = "{0} is enabled")
+    @EnumSource(value = UserStatus.class, names = {"ACTIVE", "PENDING_VERIFICATION"})
+    @DisplayName("accounts that may authenticate are enabled")
+    void enabled(UserStatus status) {
+        user.setStatus(status);
+
+        assertThat(principal.isEnabled()).isTrue();
     }
 
     @Test
-    void getUsername_ShouldReturnUserEmail() {
-        // Act
-        String result = userPrincipal.getUsername();
-
-        // Assert
-        assertThat(result)
-                .isEqualTo("test@artelier.com");
-    }
-
-    @Test
-    void isAccountNonLocked_ShouldReturnTrue_WhenUserIsNotBanned() {
-        // Arrange
-        user.setBanned(false);
-
-        // Act
-        boolean result = userPrincipal.isAccountNonLocked();
-
-        // Assert
-        assertThat(result).isTrue();
-    }
-
-    @Test
-    void isAccountNonLocked_ShouldReturnFalse_WhenUserIsBanned() {
-        // Arrange
-        user.setBanned(true);
-
-        // Act
-        boolean result = userPrincipal.isAccountNonLocked();
-
-        // Assert
-        assertThat(result).isFalse();
-    }
-
-    @Test
-    void user_ShouldReturnOriginalUser() {
-        // Act
-        User result = userPrincipal.user();
-
-        // Assert
-        assertThat(result).isSameAs(user);
+    @DisplayName("toString identifies the account but never leaks the password hash")
+    void toStringDoesNotLeak() {
+        assertThat(principal.toString())
+                .contains("Geronimo01")
+                .contains("BUYER")
+                .doesNotContain("hashed-password");
     }
 }
