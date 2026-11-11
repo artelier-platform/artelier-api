@@ -33,4 +33,8 @@ public class ArtelierException extends RuntimeException {
     public static ArtelierException forbidden(String message) {
         return new ArtelierException(message, HttpStatus.FORBIDDEN);
     }
+
+    public static ArtelierException internalServerError(String message) {
+        return new ArtelierException(message, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
 }

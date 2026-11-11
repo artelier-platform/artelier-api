@@ -5,7 +5,9 @@ import com.artelier.api.entity.User;
 import com.artelier.api.entity.UserSession;
 import com.artelier.api.enums.SessionRevocationReason;
 import com.artelier.api.exception.ArtelierException;
+import com.artelier.api.repository.UserRepository;
 import com.artelier.api.repository.UserSessionRepository;
+import com.artelier.api.security.JwtUtil;
 import com.artelier.api.security.RefreshTokenHasher;
 import com.artelier.api.service.impl.UserSessionServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
@@ -48,7 +50,8 @@ class UserSessionServiceTest {
 
     @Mock private UserSessionRepository sessionRepository;
     @Mock private RefreshTokenHasher hasher;
-
+    @Mock private UserRepository userRepository;
+    @Mock private JwtUtil jwtUtil;
     @InjectMocks private UserSessionServiceImpl service;
 
     private User user;
@@ -56,11 +59,24 @@ class UserSessionServiceTest {
     @BeforeEach
     void setUp() {
         ReflectionTestUtils.setField(service, "refreshExpirationDays", 7L);
-        // A fake, readable hash: lets the tests tell raw tokens and hashes apart.
-        lenient().when(hasher.hash(anyString()))
-                .thenAnswer(inv -> "hash:" + inv.getArgument(0));
 
-        user = User.builder().id(UUID.randomUUID()).username("Geronimo01").build();
+        lenient().when(hasher.hash(anyString()))
+                .thenAnswer(invocation ->
+                        "hash:" + invocation.getArgument(0)
+                );
+
+        lenient().when(jwtUtil.generateAccessToken(
+                any(UUID.class),
+                any(UUID.class),
+                any()
+        )).thenAnswer(invocation ->
+                UUID.randomUUID().toString() + UUID.randomUUID()
+        );
+
+        user = User.builder()
+                .id(UUID.randomUUID())
+                .username("Geronimo01")
+                .build();
     }
 
     // =========================================================

@@ -1,4 +1,3 @@
-
 package com.artelier.api.security;
 
 import com.artelier.api.entity.User;
@@ -19,6 +18,10 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.UUID;
 
+/**
+ * Filter responsible for intercepting incoming HTTP requests to validate JSON Web Tokens (JWT), 
+ * check user account status, verify active session states, and populate the Spring Security context.
+ */
 @AllArgsConstructor
 @Component
 public class JwtFilter extends OncePerRequestFilter {
@@ -28,6 +31,14 @@ public class JwtFilter extends OncePerRequestFilter {
     private final CustomAuthenticationEntryPoint authenticationEntryPoint;
     private final UserSessionService userSessionService;
 
+    /**
+     * Determines whether the filter should be bypassed for specific request paths.
+     *
+     * <p>Excludes authentication endpoints (starting with {@code /auth/}) from token filtering.</p>
+     *
+     * @param request the current HTTP request
+     * @return {@code true} if the filter should be skipped; {@code false} otherwise
+     */
     @Override
     protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
         String path = request.getRequestURI()
@@ -36,6 +47,16 @@ public class JwtFilter extends OncePerRequestFilter {
         return path.startsWith("/auth/");
     }
 
+    /**
+     * Extracts the JWT from the Authorization header, validates its cryptographic signature and claims,
+     * checks user and session validity, and sets the authentication in the security context.
+     *
+     * @param request     the current HTTP request
+     * @param response    the HTTP response
+     * @param filterChain the filter chain for executing subsequent filters
+     * @throws ServletException if an error occurs during filtering
+     * @throws IOException      if an I/O error occurs during filtering
+     */
     @Override
     protected void doFilterInternal(
             HttpServletRequest request,
@@ -66,17 +87,14 @@ public class JwtFilter extends OncePerRequestFilter {
         UUID userId;
         UUID sessionId;
 
-
         try {
             userId = jwtUtil.extractUserId(token);
             sessionId = jwtUtil.extractSessionId(token);
-
         } catch (JwtException | IllegalArgumentException e) {
             SecurityContextHolder.clearContext();
             filterChain.doFilter(request, response);
             return;
         }
-
 
         User user = userRepository.findById(userId).orElse(null);
 
@@ -94,13 +112,11 @@ public class JwtFilter extends OncePerRequestFilter {
             return;
         }
 
-
         if (!userSessionService.isActive(sessionId, userId)) {
             SecurityContextHolder.clearContext();
             filterChain.doFilter(request, response);
             return;
         }
-
 
         UserPrincipal principal = new UserPrincipal(user);
         UsernamePasswordAuthenticationToken authentication =
@@ -111,6 +127,7 @@ public class JwtFilter extends OncePerRequestFilter {
                 );
         SecurityContextHolder.getContext()
                 .setAuthentication(authentication);
+
         filterChain.doFilter(request, response);
     }
 }

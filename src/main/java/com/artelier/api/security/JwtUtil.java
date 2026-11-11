@@ -1,5 +1,5 @@
-
 package com.artelier.api.security;
+
 import com.artelier.api.enums.Role;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
@@ -13,13 +13,13 @@ import java.time.Instant;
 import java.util.Date;
 import java.util.UUID;
 
-
 /**
  * Utility component responsible for generating, validating, and extracting
  * information from JWT access tokens.
- * Uses HMAC-based signing to ensure token integrity and authenticity.
+ *
+ * <p>Uses HMAC-based signing to ensure token integrity and authenticity.
  * Token claims include the user ID, session ID, role, issuer,
- * issuance date, and expiration date.
+ * issuance date, and expiration date.</p>
  */
 @Component
 public class JwtUtil {
@@ -61,9 +61,9 @@ public class JwtUtil {
     /**
      * Generates a signed JWT access token for the specified user and session.
      *
-     * @param userId the unique identifier of the authenticated user
+     * @param userId    the unique identifier of the authenticated user
      * @param sessionId the unique identifier of the associated session
-     * @param role the role assigned to the user
+     * @param role      the role assigned to the user
      * @return the compact signed JWT access token
      */
     public String generateAccessToken(UUID userId, UUID sessionId, Role role) {
