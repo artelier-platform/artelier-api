@@ -1,10 +1,16 @@
+
 package com.artelier.api.security;
+
 import com.artelier.api.entity.User;
+import com.artelier.api.enums.UserStatus;
 import com.artelier.api.repository.UserRepository;
+import com.artelier.api.service.UserSessionService;
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import lombok.AllArgsConstructor;
 import org.jspecify.annotations.NonNull;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -20,62 +26,91 @@ public class JwtFilter extends OncePerRequestFilter {
     private final JwtUtil jwtUtil;
     private final UserRepository userRepository;
     private final CustomAuthenticationEntryPoint authenticationEntryPoint;
+    private final UserSessionService userSessionService;
 
-
-    // Public auth endpoints must not be rejected because of a stale Bearer header.
     @Override
     protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
-        String path = request.getRequestURI().substring(request.getContextPath().length());
+        String path = request.getRequestURI()
+                .substring(request.getContextPath().length());
+
         return path.startsWith("/auth/");
     }
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                    @NonNull HttpServletResponse response,
-                                    @NonNull FilterChain filterChain)
-            throws ServletException, IOException {
+    protected void doFilterInternal(
+            HttpServletRequest request,
+            @NonNull HttpServletResponse response,
+            @NonNull FilterChain filterChain
+    ) throws ServletException, IOException {
 
         String header = request.getHeader("Authorization");
 
-        if (header != null && header.startsWith("Bearer ")) {
-            String token = header.substring(7);
-
-            if (jwtUtil.validateToken(token)) {
-                if (SecurityContextHolder.getContext().getAuthentication() == null) {
-
-                    UUID userId = jwtUtil.extractUserId(token);
-
-                    User user = userRepository.findByUserUUID(userId).orElse(null);
-                    if (user == null || !user.isActive()) {
-                        SecurityContextHolder.clearContext();
-
-                        authenticationEntryPoint.commence(
-                                request,
-                                response,
-                                new org.springframework.security.authentication.BadCredentialsException(
-                                        "Invalid authentication credentials"
-                                )
-                        );
-
-                        return;
-                    }
-
-                    UserPrincipal principal = new UserPrincipal(user);
-
-                    UsernamePasswordAuthenticationToken auth =
-                            new UsernamePasswordAuthenticationToken(
-                                    principal,
-                                    null,
-                                    principal.getAuthorities()
-                            );
-
-                    SecurityContextHolder.getContext().setAuthentication(auth);
-                }
-            } else {
-                SecurityContextHolder.clearContext();
-            }
+        if (header == null || !header.startsWith("Bearer ")) {
+            filterChain.doFilter(request, response);
+            return;
         }
 
+        String token = header.substring(7);
+
+        if (!jwtUtil.validateToken(token)) {
+            SecurityContextHolder.clearContext();
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        if (SecurityContextHolder.getContext().getAuthentication() != null) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        UUID userId;
+        UUID sessionId;
+
+
+        try {
+            userId = jwtUtil.extractUserId(token);
+            sessionId = jwtUtil.extractSessionId(token);
+
+        } catch (JwtException | IllegalArgumentException e) {
+            SecurityContextHolder.clearContext();
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+
+        User user = userRepository.findById(userId).orElse(null);
+
+        if (user == null ||
+                (user.getStatus() != UserStatus.ACTIVE &&
+                        user.getStatus() != UserStatus.PENDING_VERIFICATION)) {
+            SecurityContextHolder.clearContext();
+            authenticationEntryPoint.commence(
+                    request,
+                    response,
+                    new BadCredentialsException(
+                            "Invalid authentication credentials"
+                    )
+            );
+            return;
+        }
+
+
+        if (!userSessionService.isActive(sessionId, userId)) {
+            SecurityContextHolder.clearContext();
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+
+        UserPrincipal principal = new UserPrincipal(user);
+        UsernamePasswordAuthenticationToken authentication =
+                new UsernamePasswordAuthenticationToken(
+                        principal,
+                        null,
+                        principal.getAuthorities()
+                );
+        SecurityContextHolder.getContext()
+                .setAuthentication(authentication);
         filterChain.doFilter(request, response);
     }
 }

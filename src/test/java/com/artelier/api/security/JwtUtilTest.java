@@ -1,5 +1,6 @@
 package com.artelier.api.security;
 
+import com.artelier.api.enums.Role;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -14,7 +15,6 @@ import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.UUID;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 @DisplayName("JwtUtil")
@@ -29,6 +29,7 @@ class JwtUtilTest {
     private JwtUtil jwtUtil;
     private UUID userId;
     private UUID sessionId;
+    private static final String ISSUER = "artelier-api";
 
     @BeforeEach
     void setUp() {
@@ -45,6 +46,7 @@ class JwtUtilTest {
         JwtUtil util = new JwtUtil();
         ReflectionTestUtils.setField(util, "secret", secret);
         ReflectionTestUtils.setField(util, "expirationMs", expirationMs);
+        ReflectionTestUtils.setField(util, "issuer", ISSUER);
         return util;
     }
 
@@ -61,7 +63,7 @@ class JwtUtilTest {
     @Test
     @DisplayName("generates a token that validates")
     void generatesValidToken() {
-        String token = jwtUtil.generateAccessToken(userId, sessionId, "BUYER");
+        String token = jwtUtil.generateAccessToken(userId, sessionId, Role.BUYER);
 
         assertThat(token).isNotBlank();
         assertThat(jwtUtil.validateToken(token)).isTrue();
@@ -70,7 +72,7 @@ class JwtUtilTest {
     @Test
     @DisplayName("sub is the user id")
     void subjectIsUserId() {
-        String token = jwtUtil.generateAccessToken(userId, sessionId, "BUYER");
+        String token = jwtUtil.generateAccessToken(userId, sessionId, Role.BUYER);
 
         assertThat(claimsOf(token).getSubject()).isEqualTo(userId.toString());
     }
@@ -78,24 +80,25 @@ class JwtUtilTest {
     @Test
     @DisplayName("sid is the session id")
     void sidIsSessionId() {
-        String token = jwtUtil.generateAccessToken(userId, sessionId, "BUYER");
+        String token = jwtUtil.generateAccessToken(userId, sessionId, Role.BUYER);
 
-        assertThat(claimsOf(token).get("sid", String.class)).isEqualTo(sessionId.toString());
+        assertThat(claimsOf(token).get("jti", String.class)).isEqualTo(sessionId.toString());
     }
 
     @ParameterizedTest(name = "role {0}")
     @ValueSource(strings = {"BUYER", "ADMIN"})
     @DisplayName("role is stored exactly as given (no ROLE_ prefix added)")
-    void roleClaim(String role) {
+    void roleClaim(Role role) {
         String token = jwtUtil.generateAccessToken(userId, sessionId, role);
 
-        assertThat(claimsOf(token).get("role", String.class)).isEqualTo(role);
+        assertThat(claimsOf(token).get("role", String.class))
+                .isEqualTo(role.name());
     }
 
     @Test
     @DisplayName("expires after the configured lifetime")
     void expirationMatchesConfiguration() {
-        String token = jwtUtil.generateAccessToken(userId, sessionId, "BUYER");
+        String token = jwtUtil.generateAccessToken(userId, sessionId, Role.BUYER);
 
         Claims claims = claimsOf(token);
         long lifetimeMs = claims.getExpiration().getTime() - claims.getIssuedAt().getTime();
@@ -107,17 +110,17 @@ class JwtUtilTest {
     @Test
     @DisplayName("carries nothing else: no username, email, password or phone")
     void carriesOnlyTheExpectedClaims() {
-        String token = jwtUtil.generateAccessToken(userId, sessionId, "BUYER");
+        String token = jwtUtil.generateAccessToken(userId, sessionId, Role.BUYER);
 
         assertThat(claimsOf(token).keySet())
-                .containsExactlyInAnyOrder("sub", "sid", "role", "iat", "exp");
+                .containsExactlyInAnyOrder("iss", "sub", "jti", "role", "iat", "exp");
     }
 
     @Test
     @DisplayName("two sessions of the same user get different tokens")
     void tokensDifferPerSession() {
-        String first = jwtUtil.generateAccessToken(userId, UUID.randomUUID(), "BUYER");
-        String second = jwtUtil.generateAccessToken(userId, UUID.randomUUID(), "BUYER");
+        String first = jwtUtil.generateAccessToken(userId, UUID.randomUUID(), Role.BUYER);
+        String second = jwtUtil.generateAccessToken(userId, UUID.randomUUID(), Role.BUYER);
 
         assertThat(first).isNotEqualTo(second);
     }
@@ -129,11 +132,11 @@ class JwtUtilTest {
     @Test
     @DisplayName("extractors return what was put in the token")
     void extractorsRoundTrip() {
-        String token = jwtUtil.generateAccessToken(userId, sessionId, "ADMIN");
+        String token = jwtUtil.generateAccessToken(userId, sessionId, Role.ADMIN);
 
         assertThat(jwtUtil.extractUserId(token)).isEqualTo(userId);
         assertThat(jwtUtil.extractSessionId(token)).isEqualTo(sessionId);
-        assertThat(jwtUtil.extractRole(token)).isEqualTo("ADMIN");
+        assertThat(jwtUtil.extractRole(token)).isEqualTo(Role.ADMIN);
     }
 
     // =========================================================
@@ -157,7 +160,7 @@ class JwtUtilTest {
     @DisplayName("a token signed with another secret is rejected")
     void differentSecret() {
         String token = jwtUtil(OTHER_SECRET, EXPIRATION_MS)
-                .generateAccessToken(userId, sessionId, "BUYER");
+                .generateAccessToken(userId, sessionId, Role.BUYER);
 
         assertThat(jwtUtil.validateToken(token)).isFalse();
     }
@@ -166,7 +169,7 @@ class JwtUtilTest {
     @DisplayName("an expired token is rejected")
     void expiredToken() {
         String token = jwtUtil(SECRET, -1000L)
-                .generateAccessToken(userId, sessionId, "BUYER");
+                .generateAccessToken(userId, sessionId, Role.BUYER);
 
         assertThat(jwtUtil.validateToken(token)).isFalse();
     }
@@ -174,7 +177,7 @@ class JwtUtilTest {
     @Test
     @DisplayName("tampering with the payload (BUYER → ADMIN) breaks the signature")
     void tamperedPayload() {
-        String token = jwtUtil.generateAccessToken(userId, sessionId, "BUYER");
+        String token = jwtUtil.generateAccessToken(userId, sessionId, Role.BUYER);
         String[] parts = token.split("\\.");
 
         String payload = new String(Base64.getUrlDecoder().decode(parts[1]), StandardCharsets.UTF_8);

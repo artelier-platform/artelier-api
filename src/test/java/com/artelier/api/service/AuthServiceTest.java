@@ -108,7 +108,7 @@ class AuthServiceTest {
 
     /** Stubs what turns an issued session into an AuthResponse. */
     private void stubTokens(User user, IssuedSession issued) {
-        when(jwtUtil.generateAccessToken(user.getId(), issued.session().getId(), user.getRole().name()))
+        when(jwtUtil.generateAccessToken(user.getId(), issued.session().getId(), user.getRole()))
                 .thenReturn("access-token");
         when(jwtUtil.getExpirationMs()).thenReturn(EXPIRATION_MS);
         when(userMapper.toProfileResponse(user)).thenReturn(profileOf(user));
@@ -144,7 +144,7 @@ class AuthServiceTest {
             });
             when(userSessionService.create(any(User.class)))
                     .thenReturn(new IssuedSession(session, "refresh-1"));
-            when(jwtUtil.generateAccessToken(userId, session.getId(), "BUYER")).thenReturn("access-token");
+            when(jwtUtil.generateAccessToken(userId, session.getId(), Role.BUYER)).thenReturn("access-token");
             when(jwtUtil.getExpirationMs()).thenReturn(EXPIRATION_MS);
             when(userMapper.toProfileResponse(any(User.class)))
                     .thenAnswer(inv -> profileOf(inv.getArgument(0)));

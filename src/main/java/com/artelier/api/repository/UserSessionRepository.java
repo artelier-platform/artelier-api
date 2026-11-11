@@ -10,4 +10,5 @@ import java.util.UUID;
 public interface UserSessionRepository extends JpaRepository<UserSession, UUID> {
     Optional<UserSession> findByRefreshTokenHash(String refreshTokenHash);
     int rotateRefreshTokenHash(String currentHash, String newHash, Instant now);
+    Optional<UserSession> findBySessionUUIDAndUserUUID(UUID sessionId, UUID userId);
 }

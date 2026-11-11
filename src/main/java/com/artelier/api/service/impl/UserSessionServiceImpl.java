@@ -3,6 +3,8 @@ package com.artelier.api.service.impl;
 import com.artelier.api.dto.response.IssuedSession;
 import com.artelier.api.entity.User;
 import com.artelier.api.enums.SessionRevocationReason;
+import com.artelier.api.exception.ArtelierException;
+import com.artelier.api.repository.UserRepository;
 import com.artelier.api.repository.UserSessionRepository;
 import com.artelier.api.security.RefreshTokenHasher;
 import com.artelier.api.service.UserSessionService;
@@ -18,6 +20,7 @@ import java.util.UUID;
 @Transactional
 public class UserSessionServiceImpl implements UserSessionService {
     private final UserSessionRepository userSessionRepository;
+    private final UserRepository userRepository;
     private final RefreshTokenHasher refreshTokenHasher;
 
     @Value("${jwt.refresh-expiration-days}")
@@ -40,6 +43,14 @@ public class UserSessionServiceImpl implements UserSessionService {
 
     @Override
     public boolean isActive(UUID sessionId, UUID userId) {
-        throw new UnsupportedOperationException("TODO");
+        if (sessionId == null || userId == null) {
+            throw ArtelierException.badRequest("Invalid session or user ID");
+        }
+
+        if (userRepository.findById(userId).isEmpty()) {
+            throw ArtelierException.notFound("User not found for userId: " + userId);
+        }
+
+        return userSessionRepository.findBySessionUUIDAndUserUUID(sessionId, userId).isPresent();
     }
 }
