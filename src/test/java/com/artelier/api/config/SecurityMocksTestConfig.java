@@ -1,7 +1,7 @@
 package com.artelier.api.config;
 
-import com.artelier.api.repository.UserRepository;
-import com.artelier.api.security.JwtUtil;
+import com.artelier.api.user.repository.UserRepository;
+import com.artelier.api.auth.security.UserJwtService;
 import org.mockito.Mockito;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -10,8 +10,8 @@ import org.springframework.context.annotation.Bean;
 public class SecurityMocksTestConfig {
 
     @Bean
-    JwtUtil jwtUtil() {
-        return Mockito.mock(JwtUtil.class);
+    UserJwtService UserJwtService() {
+        return Mockito.mock(UserJwtService.class);
     }
 
     @Bean
