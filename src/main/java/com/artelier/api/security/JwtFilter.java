@@ -26,7 +26,7 @@ import java.util.UUID;
 @Component
 public class JwtFilter extends OncePerRequestFilter {
 
-    private final JwtUtil jwtUtil;
+    private final UserJwtService userJwtService;
     private final UserRepository userRepository;
     private final CustomAuthenticationEntryPoint authenticationEntryPoint;
     private final UserSessionService userSessionService;
@@ -73,7 +73,7 @@ public class JwtFilter extends OncePerRequestFilter {
 
         String token = header.substring(7);
 
-        if (!jwtUtil.validateToken(token)) {
+        if (!userJwtService.validateToken(token)) {
             SecurityContextHolder.clearContext();
             filterChain.doFilter(request, response);
             return;
@@ -88,8 +88,8 @@ public class JwtFilter extends OncePerRequestFilter {
         UUID sessionId;
 
         try {
-            userId = jwtUtil.extractUserId(token);
-            sessionId = jwtUtil.extractSessionId(token);
+            userId = userJwtService.extractUserId(token);
+            sessionId = userJwtService.extractSessionId(token);
         } catch (JwtException | IllegalArgumentException e) {
             SecurityContextHolder.clearContext();
             filterChain.doFilter(request, response);

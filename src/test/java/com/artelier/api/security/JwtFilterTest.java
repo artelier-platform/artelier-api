@@ -42,7 +42,7 @@ import static org.mockito.Mockito.when;
 @DisplayName("JwtFilter")
 class JwtFilterTest {
 
-    @Mock private JwtUtil jwtUtil;
+    @Mock private UserJwtService userJwtService;
     @Mock private UserRepository userRepository;
     @Mock private UserSessionService userSessionService;
     @Mock private CustomAuthenticationEntryPoint authenticationEntryPoint;
@@ -86,10 +86,10 @@ class JwtFilterTest {
     /** A correctly signed, unexpired token that carries a user id and a session id. */
     private void givenValidToken() {
         givenBearer("valid");
-        when(jwtUtil.validateToken("valid")).thenReturn(true);
+        when(userJwtService.validateToken("valid")).thenReturn(true);
         // Lenient: depending on the order of checks, the filter may stop before reading the sid.
-        lenient().when(jwtUtil.extractUserId("valid")).thenReturn(userId);
-        lenient().when(jwtUtil.extractSessionId("valid")).thenReturn(sessionId);
+        lenient().when(userJwtService.extractUserId("valid")).thenReturn(userId);
+        lenient().when(userJwtService.extractSessionId("valid")).thenReturn(sessionId);
     }
 
     /** Lenient: the filter may check the session before or after loading the user. */
@@ -148,7 +148,7 @@ class JwtFilterTest {
             jwtFilter.doFilterInternal(request, response, filterChain);
 
             assertContinuesUnauthenticated();
-            verifyNoInteractions(jwtUtil, userRepository, userSessionService);
+            verifyNoInteractions(userJwtService, userRepository, userSessionService);
         }
 
         @Test
@@ -159,14 +159,14 @@ class JwtFilterTest {
             jwtFilter.doFilterInternal(request, response, filterChain);
 
             assertContinuesUnauthenticated();
-            verifyNoInteractions(jwtUtil, userRepository, userSessionService);
+            verifyNoInteractions(userJwtService, userRepository, userSessionService);
         }
 
         @Test
         @DisplayName("token that does not validate (bad signature, expired, malformed)")
         void invalidToken() throws Exception {
             givenBearer("bad-token");
-            when(jwtUtil.validateToken("bad-token")).thenReturn(false);
+            when(userJwtService.validateToken("bad-token")).thenReturn(false);
 
             jwtFilter.doFilterInternal(request, response, filterChain);
 
@@ -178,9 +178,9 @@ class JwtFilterTest {
         @DisplayName("valid signature but sub is not a UUID (token from before the change): never a 500")
         void subjectIsNotAUuid() throws Exception {
             givenBearer("legacy");
-            when(jwtUtil.validateToken("legacy")).thenReturn(true);
-            when(jwtUtil.extractUserId("legacy")).thenThrow(new IllegalArgumentException("not a UUID"));
-            lenient().when(jwtUtil.extractSessionId("legacy")).thenReturn(sessionId);
+            when(userJwtService.validateToken("legacy")).thenReturn(true);
+            when(userJwtService.extractUserId("legacy")).thenThrow(new IllegalArgumentException("not a UUID"));
+            lenient().when(userJwtService.extractSessionId("legacy")).thenReturn(sessionId);
 
             jwtFilter.doFilterInternal(request, response, filterChain);
 
@@ -192,9 +192,9 @@ class JwtFilterTest {
         @DisplayName("valid signature but no usable sid claim")
         void sessionIdMissing() throws Exception {
             givenBearer("no-sid");
-            when(jwtUtil.validateToken("no-sid")).thenReturn(true);
-            lenient().when(jwtUtil.extractUserId("no-sid")).thenReturn(userId);
-            when(jwtUtil.extractSessionId("no-sid")).thenThrow(new IllegalArgumentException("no sid"));
+            when(userJwtService.validateToken("no-sid")).thenReturn(true);
+            lenient().when(userJwtService.extractUserId("no-sid")).thenReturn(userId);
+            when(userJwtService.extractSessionId("no-sid")).thenThrow(new IllegalArgumentException("no sid"));
 
             jwtFilter.doFilterInternal(request, response, filterChain);
 
@@ -298,7 +298,7 @@ class JwtFilterTest {
             assertThat(auth.getAuthorities())
                     .extracting(GrantedAuthority::getAuthority)
                     .containsExactly("ROLE_BUYER");
-            verify(jwtUtil, never()).extractRole(any());
+            verify(userJwtService, never()).extractRole(any());
         }
 
         @ParameterizedTest(name = "account {0} may authenticate")

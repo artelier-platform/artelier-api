@@ -25,22 +25,40 @@ import java.util.UUID;
 )
 public record UserEmailResponse(
 
-        @Schema(example = "550e8400-e29b-41d4-a716-446655440000")
+        @Schema(
+                description = "Unique identifier of the email record",
+                example = "550e8400-e29b-41d4-a716-446655440000"
+        )
         UUID id,
 
-        @Schema(example = "user@example.com")
+        @Schema(
+                description = "The registered email address string",
+                example = "user@example.com"
+        )
         String email,
 
-        @Schema(example = "true")
+        @Schema(
+                description = "Indicates whether this is the primary contact email for the user",
+                example = "true"
+        )
         boolean isPrimary,
 
-        @Schema(example = "true")
+        @Schema(
+                description = "Indicates whether ownership of the email has been verified",
+                example = "true"
+        )
         boolean isVerified,
 
-        @Schema(example = "2026-11-05T18:30:00Z")
+        @Schema(
+                description = "Timestamp when the email address was successfully verified",
+                example = "2026-11-05T18:30:00Z"
+        )
         Instant verifiedAt,
 
-        @Schema(example = "2026-11-05T18:00:00Z")
+        @Schema(
+                description = "Timestamp when the email record was created",
+                example = "2026-11-05T18:00:00Z"
+        )
         Instant createdAt
 
 ) {
