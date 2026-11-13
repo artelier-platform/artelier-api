@@ -2,9 +2,11 @@ package com.artelier.api.integration.wompi.service;
 
 import com.artelier.api.integration.wompi.config.WompiAuthRequestInterceptor;
 import com.artelier.api.integration.wompi.dto.request.WompiTransactionRequest;
-import com.artelier.api.integration.wompi.dto.response.*;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
+import com.artelier.api.integration.wompi.dto.response.WompiFinancialInstitutionsListResponse;
+import com.artelier.api.integration.wompi.dto.response.WompiMerchantResponse;
+import com.artelier.api.integration.wompi.dto.response.WompiTransactionResponse;
 
 @FeignClient(
         name = "wompi",

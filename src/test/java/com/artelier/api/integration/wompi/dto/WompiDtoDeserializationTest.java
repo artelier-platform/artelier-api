@@ -1,6 +1,5 @@
 package com.artelier.api.integration.wompi.dto;
 
-import com.artelier.api.integration.wompi.dto.response.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -8,6 +7,10 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import com.artelier.api.integration.wompi.dto.response.WompiFinancialInstitutionsListResponse;
+import com.artelier.api.integration.wompi.dto.response.WompiFinancialInstitutionsResponse;
+import com.artelier.api.integration.wompi.dto.response.WompiMerchantResponse;
+import com.artelier.api.integration.wompi.dto.response.WompiTransactionResponse;
 
 class WompiDtoDeserializationTest {
 
