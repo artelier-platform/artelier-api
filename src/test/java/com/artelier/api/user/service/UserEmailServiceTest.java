@@ -7,6 +7,7 @@ import com.artelier.api.user.enums.Role;
 import com.artelier.api.user.enums.UserStatus;
 import com.artelier.api.shared.exception.ArtelierException;
 import com.artelier.api.integration.mail.Service.VerificationMailSender;
+import com.artelier.api.user.mapper.UserEmailMapper;
 import com.artelier.api.user.mapper.UserMapper;
 import com.artelier.api.user.repository.UserEmailRepository;
 import com.artelier.api.user.repository.UserRepository;
@@ -54,7 +55,7 @@ class UserEmailServiceTest {
 
     @Mock private UserEmailRepository emailRepository;
     @Mock private UserRepository userRepository;
-    @Mock private UserMapper userMapper;
+    @Mock private UserEmailMapper userEmailMapper;
     @Mock private EmailVerificationTokens tokens;
     @Mock private VerificationMailSender mailSender;
     @Mock private AccountVerificationService accountVerificationService;
@@ -96,7 +97,7 @@ class UserEmailServiceTest {
     }
 
     private void stubMapper() {
-        when(userMapper.toEmailResponse(any(UserEmail.class)))
+        when(userEmailMapper.toResponse(any(UserEmail.class)))
                 .thenAnswer(inv -> responseOf(inv.getArgument(0)));
     }
 

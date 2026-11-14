@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -95,7 +96,9 @@ public class UserEmailServiceImpl implements UserEmailService {
 
     @Override
     public Optional<User> findVerifiedOwner(String email) {
-        return userEmailRepository.findByEmail(email)
+        String normalizedEmail = email.trim().toLowerCase(Locale.ROOT);
+
+        return userEmailRepository.findByEmail(normalizedEmail)
                 .filter(UserEmail::isVerified)
                 .map(UserEmail::getUser);
     }
@@ -141,33 +144,88 @@ public class UserEmailServiceImpl implements UserEmailService {
 
     @Override
     public UserEmailResponse setPrimary(UUID userId, UUID emailId) {
-        UserEmail userEmail = userEmailRepository.findByIdAndUserId(emailId, userId)
-                .orElseThrow(() -> ArtelierException.notFound("Email with ID %s not found for user with ID %s", emailId, userId));
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> ArtelierException.notFound(
+                        "User with ID %s not found",
+                        userId
+                ));
+
+        if (user.getStatus() == UserStatus.SUSPENDED) {
+            throw ArtelierException.forbidden(
+                    "User with ID %s is suspended",
+                    userId
+            );
+        }
+
+        UserEmail userEmail = userEmailRepository
+                .findByIdAndUserId(emailId, userId)
+                .orElseThrow(() -> ArtelierException.notFound(
+                        "Email with ID %s not found for user with ID %s",
+                        emailId,
+                        userId
+                ));
 
         if (!userEmail.isVerified()) {
-            throw ArtelierException.badRequest("Email with ID %s is not verified", emailId);
+            throw ArtelierException.conflict(
+                    "Email with ID %s is not verified",
+                    emailId
+            );
+        }
+
+        if (userEmail.isPrimary()) {
+            return userEmailMapper.toResponse(userEmail);
         }
 
         userEmailRepository.findByUserId(userId).stream()
                 .filter(UserEmail::isPrimary)
                 .forEach(email -> {
                     email.setPrimary(false);
-                    userEmailRepository.save(email);
+                    userEmailRepository.saveAndFlush(email);
                 });
 
         userEmail.setPrimary(true);
-        userEmailRepository.save(userEmail);
+        userEmailRepository.saveAndFlush(userEmail);
 
         return userEmailMapper.toResponse(userEmail);
     }
 
     @Override
     public void removeEmail(UUID userId, UUID emailId) {
-        UserEmail userEmail = userEmailRepository.findByIdAndUserId(emailId, userId)
-                .orElseThrow(() -> ArtelierException.notFound("Email with ID %s not found for user with ID %s", emailId, userId));
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> ArtelierException.notFound(
+                        "User with ID %s not found",
+                        userId
+                ));
+
+        if (user.getStatus() == UserStatus.SUSPENDED) {
+            throw ArtelierException.forbidden(
+                    "User with ID %s is suspended",
+                    userId
+            );
+        }
+
+        UserEmail userEmail = userEmailRepository
+                .findByIdAndUserId(emailId, userId)
+                .orElseThrow(() -> ArtelierException.notFound(
+                        "Email with ID %s not found for user with ID %s",
+                        emailId,
+                        userId
+                ));
 
         if (userEmail.isPrimary()) {
-            throw ArtelierException.badRequest("Cannot remove primary email with ID %s", emailId);
+            throw ArtelierException.conflict(
+                    "Cannot remove primary email with ID %s",
+                    emailId
+            );
+        }
+
+        if (userEmailRepository.countByUserId(userId) <= 1) {
+            throw ArtelierException.conflict(
+                    "User with ID %s must have at least one email",
+                    userId
+            );
         }
 
         userEmailRepository.delete(userEmail);
