@@ -5,7 +5,7 @@ import com.artelier.api.user.entity.User;
 import com.artelier.api.user.entity.UserEmail;
 import com.artelier.api.user.enums.UserStatus;
 import com.artelier.api.shared.exception.ArtelierException;
-import com.artelier.api.integration.mail.VerificationMailSender;
+import com.artelier.api.integration.mail.Service.VerificationMailSender;
 import com.artelier.api.user.mapper.UserEmailMapper;
 import com.artelier.api.user.repository.UserEmailRepository;
 import com.artelier.api.user.repository.UserRepository;

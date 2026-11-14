@@ -1,9 +1,6 @@
 package com.artelier.api.auth.security;
 
 import com.artelier.api.user.enums.Role;
-import com.artelier.api.auth.security.JwtTokenBuilder;
-import com.artelier.api.auth.security.JwtTokenParser;
-import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import lombok.Getter;
 import org.springframework.beans.factory.annotation.Value;

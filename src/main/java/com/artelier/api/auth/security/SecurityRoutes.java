@@ -20,6 +20,7 @@ public final class SecurityRoutes {
     public static final String[] PUBLIC_ROUTES = {
             "/auth/**",
             "/payments/webhook",
+            "/user/emails/verify",
             "/swagger",
             "/swagger-ui/**",
             "/v3/api-docs/**",

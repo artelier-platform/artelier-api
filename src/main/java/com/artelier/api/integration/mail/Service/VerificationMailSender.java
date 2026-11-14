@@ -1,4 +1,6 @@
-package com.artelier.api.integration.mail;
+package com.artelier.api.integration.mail.Service;
+
+import com.artelier.api.integration.mail.dto.response.CreateSmtpEmail;
 
 /**
  * Service contract for sending email verification notifications and tokens
@@ -12,6 +14,7 @@ public interface VerificationMailSender {
      *
      * @param to    the recipient's email address
      * @param token the secure verification token to be included in the email
+     * @return a {@link CreateSmtpEmail} response object containing details of the sent transaction
      */
-    void sendEmailVerification(String to, String token);
+    CreateSmtpEmail sendEmailVerification(String to, String token);
 }
