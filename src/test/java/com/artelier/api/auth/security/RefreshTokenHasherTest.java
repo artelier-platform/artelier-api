@@ -1,10 +1,14 @@
 package com.artelier.api.auth.security;
 
 import com.artelier.api.auth.util.RefreshTokenHasher;
+import com.artelier.api.shared.util.Hasher;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.nio.charset.StandardCharsets;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("RefreshTokenHasher")
 class RefreshTokenHasherTest {
@@ -38,5 +42,36 @@ class RefreshTokenHasherTest {
         String hash = hasher.hash(raw);
 
         assertThat(hash).hasSize(64).doesNotContain(raw);
+    }
+
+    // ---- added ----
+
+    @Test
+    @DisplayName("an empty token still hashes (standard SHA-256 of the empty string)")
+    void emptyToken() {
+        assertThat(hasher.hash(""))
+                .isEqualTo("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+    }
+
+    @Test
+    @DisplayName("delegates to Hasher with SHA-256 and UTF-8, not another charset")
+    void usesSha256AndUtf8() {
+        String token = "ñandú-€-token";
+
+        assertThat(hasher.hash(token))
+                .isEqualTo(Hasher.hash("SHA-256", token, StandardCharsets.UTF_8))
+                .isNotEqualTo(Hasher.hash("SHA-256", token, StandardCharsets.ISO_8859_1));
+    }
+
+    @Test
+    @DisplayName("a very long token still gives a 64-char hash")
+    void longToken() {
+        assertThat(hasher.hash("a".repeat(2048))).hasSize(64);
+    }
+
+    @Test
+    @DisplayName("a null token is rejected with NullPointerException")
+    void nullToken() {
+        assertThatThrownBy(() -> hasher.hash(null)).isInstanceOf(NullPointerException.class);
     }
 }
