@@ -38,15 +38,6 @@ public interface UserSessionRepository extends JpaRepository<UserSession, UUID> 
     Optional<UserSession> findByPreviousRefreshTokenHash(String previousRefreshTokenHash);
 
     /**
-     * Retrieves a specific session belonging to a specific user.
-     *
-     * @param sessionId the unique identifier of the session
-     * @param userId    the unique identifier of the user owning the session
-     * @return an {@link Optional} containing the matching user session
-     */
-    Optional<UserSession> findBySessionUUIDAndUserUUID(UUID sessionId, UUID userId);
-
-    /**
      * Rotates an existing refresh token hash by updating it with a new hash value,
      * recording the usage timestamp, and shifting the current hash into the previous hash field.
      *
