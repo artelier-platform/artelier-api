@@ -3,7 +3,7 @@ package com.artelier.api.auth.service;
 import com.artelier.api.auth.dto.request.LoginRequest;
 import com.artelier.api.auth.dto.request.RegisterRequest;
 import com.artelier.api.auth.dto.response.AuthResponse;
-import com.artelier.api.auth.dto.request.IssuedSession;
+import com.artelier.api.auth.model.IssuedSession;
 import com.artelier.api.user.dto.UserProfileResponse;
 import com.artelier.api.user.entity.User;
 import com.artelier.api.auth.entity.UserSession;
@@ -31,7 +31,6 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import java.awt.color.ProfileDataException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;

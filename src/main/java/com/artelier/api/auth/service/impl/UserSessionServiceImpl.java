@@ -1,13 +1,13 @@
 package com.artelier.api.auth.service.impl;
 
-import com.artelier.api.auth.dto.request.IssuedSession;
+import com.artelier.api.auth.model.IssuedSession;
+import com.artelier.api.shared.util.OpaqueRefreshTokenGenerator;
 import com.artelier.api.user.entity.User;
 import com.artelier.api.auth.entity.UserSession;
 import com.artelier.api.auth.enums.SessionRevocationReason;
 import com.artelier.api.shared.exception.ArtelierException;
-import com.artelier.api.user.repository.UserRepository;
+import com.artelier.api.user.enums.UserStatus;
 import com.artelier.api.auth.repository.UserSessionRepository;
-import com.artelier.api.auth.security.UserJwtService;
 import com.artelier.api.auth.util.RefreshTokenHasher;
 import com.artelier.api.auth.service.UserSessionService;
 import lombok.RequiredArgsConstructor;
@@ -30,9 +30,7 @@ import java.util.UUID;
 public class UserSessionServiceImpl implements UserSessionService {
 
     private final UserSessionRepository userSessionRepository;
-    private final UserRepository userRepository;
     private final RefreshTokenHasher refreshTokenHasher;
-    private final UserJwtService UserJwtService;
 
     @Value("${jwt.refresh-expiration-days}")
     private long refreshExpirationDays;
@@ -133,11 +131,7 @@ public class UserSessionServiceImpl implements UserSessionService {
     private IssuedSession createUserSession(User user) {
         UUID sessionId = UUID.randomUUID();
 
-        String refreshToken = UserJwtService.generateAccessToken(
-                user.getId(),
-                sessionId,
-                user.getRole()
-        );
+        String refreshToken = OpaqueRefreshTokenGenerator.generate();
 
         String refreshTokenHash = refreshTokenHasher.hash(refreshToken);
         Instant now = Instant.now();
@@ -159,7 +153,7 @@ public class UserSessionServiceImpl implements UserSessionService {
     /**
      * Rotates the refresh token associated with an existing user session.
      *
-     * <p>Validates expiration, checks revocation status, detects potential token reuse attacks, 
+     * <p>Validates expiration, checks revocation status, detects potential token reuse attacks,
      * and atomically rotates the stored hash while preserving the original session identifier.</p>
      *
      * @param currentRefreshToken raw refresh token to be rotated
@@ -167,11 +161,21 @@ public class UserSessionServiceImpl implements UserSessionService {
      * @throws ArtelierException if the token is invalid, expired, revoked, or previously consumed
      */
     private IssuedSession rotateUserSession(String currentRefreshToken) {
-        if (currentRefreshToken == null) {
-            throw ArtelierException.badRequest("Refresh token cannot be null");
+        if (currentRefreshToken == null || currentRefreshToken.isBlank()) {
+            throw ArtelierException.badRequest("Refresh token cannot be null or blank");
         }
 
+        Instant now = Instant.now();
         String currentRefreshTokenHash = refreshTokenHasher.hash(currentRefreshToken);
+
+        boolean isPreviousToken = userSessionRepository
+                .findByPreviousRefreshTokenHash(currentRefreshTokenHash)
+                .isPresent();
+
+        if (isPreviousToken) {
+            revokeAllSessionsIfTokenReused(currentRefreshTokenHash);
+            throw ArtelierException.unauthorized("Refresh token reuse detected");
+        }
 
         UserSession userSession = userSessionRepository
                 .findByRefreshTokenHash(currentRefreshTokenHash)
@@ -181,33 +185,33 @@ public class UserSessionServiceImpl implements UserSessionService {
                             "No session found for the provided refresh token");
                 });
 
+        User user = userSession.getUser();
+
+        if (!user.isActive() ||
+                user.getStatus() == UserStatus.PENDING_VERIFICATION ||
+                user.getStatus() == UserStatus.SUSPENDED) {
+            throw ArtelierException.unauthorized("User is not active");
+        }
+
         if (userSession.isRevoked()) {
             userSessionRepository.revokeAllByUserId(
-                    userSession.getUser().getId(), Instant.now(),
+                    user.getId(), now,
                     SessionRevocationReason.SECURITY_ACTION);
             throw ArtelierException.unauthorized("Session revoked");
         }
 
-        if (userSession.getExpiresAt().isBefore(Instant.now())) {
+        if (userSession.getExpiresAt().isBefore(now)) {
             revoke(currentRefreshToken, SessionRevocationReason.SESSION_EXPIRED);
             throw ArtelierException.unauthorized("Session expired");
         }
 
-        User user = userSession.getUser();
-        UUID sessionId = userSession.getId();
-
-        String refreshToken = UserJwtService.generateAccessToken(
-                user.getId(),
-                sessionId,
-                user.getRole()
-        );
-
-        String refreshTokenHash = refreshTokenHasher.hash(refreshToken);
+        String newRefreshToken = OpaqueRefreshTokenGenerator.generate();
+        String newRefreshTokenHash = refreshTokenHasher.hash(newRefreshToken);
 
         int updatedRows = userSessionRepository.rotateRefreshTokenHash(
                 currentRefreshTokenHash,
-                refreshTokenHash,
-                Instant.now()
+                newRefreshTokenHash,
+                now
         );
 
         if (updatedRows == 0) {
@@ -216,7 +220,13 @@ public class UserSessionServiceImpl implements UserSessionService {
             );
         }
 
-        return new IssuedSession(userSession, refreshToken);
+        if (updatedRows > 1) {
+            throw ArtelierException.internalServerError(
+                    "Refresh token hash matched multiple active sessions"
+            );
+        }
+
+        return new IssuedSession(userSession, newRefreshToken);
     }
 
     /**

@@ -1,6 +1,5 @@
 package com.artelier.api.auth.service.impl;
 
-import com.artelier.api.auth.dto.request.IssuedSession;
 import com.artelier.api.auth.dto.request.LoginRequest;
 import com.artelier.api.auth.dto.request.RegisterRequest;
 import com.artelier.api.auth.dto.response.AuthResponse;
