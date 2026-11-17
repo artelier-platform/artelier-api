@@ -1,0 +1,154 @@
+package com.artelier.api.shared.exception;
+
+import com.artelier.api.shared.dto.AppResponse;
+import com.artelier.api.integration.wompi.exception.WompiException;
+import jakarta.validation.ConstraintViolationException;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.util.StringUtils;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
+import java.util.Map;
+
+@Slf4j
+@RestControllerAdvice
+@SuppressWarnings("unused")
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(ArtelierException.class)
+    public ResponseEntity<AppResponse<Void>> handleArtelierException(ArtelierException ex) {
+        return ResponseEntity.status(ex.getStatus()).body(AppResponse.error(ex.getMessage()));
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<AppResponse<Object>> handleValidation(MethodArgumentNotValidException ex) {
+        var errors = ex.getBindingResult().getFieldErrors().stream()
+                .map(e -> Map.of(
+                        "field", e.getField(),
+                        "message", StringUtils.hasText(e.getDefaultMessage())
+                                ? e.getDefaultMessage()
+                                : "Invalid value"
+                ))
+                .toList();
+        return ResponseEntity.badRequest()
+                .body(new AppResponse<>(false, "Validation failed", errors));
+    }
+
+    /**
+     * Handles path variables or query parameters that cannot be converted to the
+     * expected type (e.g. an invalid UUID or a non-numeric int).
+     * The rejected value is intentionally not echoed back to the client.
+     */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<AppResponse<Void>> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        log.warn("Type mismatch for parameter '{}': {}", ex.getName(), ex.getMessage());
+        return ResponseEntity.badRequest()
+                .body(AppResponse.error("Invalid value for parameter '" + ex.getName() + "'"));
+    }
+
+    /**
+     * Handles required query parameters that are not present in the request.
+     */
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<AppResponse<Void>> handleMissingParameter(MissingServletRequestParameterException ex) {
+        log.warn("Missing required parameter '{}'", ex.getParameterName());
+        return ResponseEntity.badRequest()
+                .body(AppResponse.error("Missing required parameter '" + ex.getParameterName() + "'"));
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<AppResponse<Void>> handleConstraintViolation(ConstraintViolationException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(AppResponse.error(ex.getMessage()));
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<AppResponse<Void>> handleAccessDenied(AccessDeniedException ex) {
+        String message = (ex.getMessage() != null && !ex.getMessage().isBlank())
+                ? ex.getMessage()
+                : "Access denied";
+
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(AppResponse.error(message));
+    }
+
+    /**
+     * Handles requests that use an HTTP method the route does not support. Keeps the
+     * {@code Allow} header that Spring computes so clients know which methods are valid.
+     */
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<AppResponse<Void>> handleMethodNotSupported(HttpRequestMethodNotSupportedException ex) {
+        log.warn("Method not allowed: {}", ex.getMethod());
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED)
+                .headers(ex.getHeaders())
+                .body(AppResponse.error("Method not allowed"));
+    }
+
+    /**
+     * Handles requests whose path has no controller or static resource behind it.
+     */
+    @ExceptionHandler({NoResourceFoundException.class, NoHandlerFoundException.class})
+    public ResponseEntity<AppResponse<Void>> handleRouteNotFound(Exception ex) {
+        log.warn("Route not found: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(AppResponse.error("Resource not found"));
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<AppResponse<Void>> handleGenericException(Exception ex) {
+        log.error("Unhandled exception", ex);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(AppResponse.error("Something went wrong"));
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<AppResponse<Void>> handleUnreadableBody(
+            HttpMessageNotReadableException ex) {
+        log.error("JSON parsing error", ex);
+        String errorMessage = "Invalid request body. Please check JSON format.";
+        ex.getMostSpecificCause();
+        if (ex.getMostSpecificCause().getMessage() != null) {
+            log.debug("Detailed cause: {}",
+                    ex.getMostSpecificCause().getMessage());
+        }
+        return ResponseEntity.badRequest()
+                .body(AppResponse.error(errorMessage));
+    }
+
+    @ExceptionHandler(WompiException.class)
+    public ResponseEntity<AppResponse<Object>> handleWompiException(
+            WompiException ex) {
+
+        return ResponseEntity.badRequest()
+                .body(new AppResponse<>(
+                        false,
+                        ex.getMessage(),
+                        Map.of(
+                                "provider", "WOMPI",
+                                "code", ex.getWompiCode()
+                        )
+                ));
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<AppResponse<Void>> handleUnsupportedMediaType(HttpMediaTypeNotSupportedException ex) {
+        return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE)
+                .body(AppResponse.error("Unsupported media type"));
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<AppResponse<Void>> handleAuthentication(AuthenticationException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(AppResponse.error("Authentication required"));
+    }
+}

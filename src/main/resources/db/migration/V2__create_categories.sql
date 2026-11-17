@@ -1,4 +1,3 @@
-
 -- ============================================================
 -- V2: Categories
 -- ============================================================
@@ -10,11 +9,8 @@ CREATE TABLE categories (
                             description VARCHAR(500)
 );
 
-CREATE INDEX idx_categories_slug ON categories(slug);
-
 INSERT INTO categories (name, slug, description) VALUES
                                                      ('Cerámica',        'ceramica',        'Piezas en cerámica pintadas a mano'),
                                                      ('Madera',          'madera',          'Piezas en madera con detalle artesanal'),
                                                      ('Resina',          'resina',          'Individuales y accesorios en resina'),
                                                      ('Pedido especial', 'pedido-especial', 'Piezas hechas a pedido y personalizadas');
-

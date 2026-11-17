@@ -1,6 +1,6 @@
 package com.artelier.api.integration.wompi.exception;
 
-import com.artelier.api.exception.ArtelierException;
+import com.artelier.api.shared.exception.ArtelierException;
 import lombok.Getter;
 import org.springframework.http.HttpStatus;
 

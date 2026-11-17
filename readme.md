@@ -365,9 +365,9 @@ Distributed under the MIT License. See `LICENSE` for details.
 
 <p align="center">
   <img
-    src="https://avatars.githubusercontent.com/MimiRandomS"
+    src="https://avatars.githubusercontent.com/MimiRandomDev"
     width="120"
-    alt="MimiRandomS GitHub avatar"
+    alt="MimiRandomDev GitHub avatar"
     style="border-radius:50%"
   />
 </p>
@@ -392,7 +392,7 @@ APIs with proper architecture, security, and integration of external services.
 
 ### 🌐 Links
 
-- GitHub: https://github.com/MimiRandomS
+- GitHub: https://github.com/MimiRandomDev
 
 ---
 
