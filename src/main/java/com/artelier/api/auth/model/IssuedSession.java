@@ -1,4 +1,4 @@
-package com.artelier.api.auth.dto.request;
+package com.artelier.api.auth.model;
 
 import com.artelier.api.auth.entity.UserSession;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -16,7 +16,7 @@ public record IssuedSession(
         UserSession session,
 
         @Schema(
-                description = "The cryptographic refresh token string used to obtain new access tokens once the current session expires.",
+                description = "Opaque refresh token used to obtain a new access token.",
                 example = "dGhpcy1pcy1hLXNhbXBsZS1yZWZyZXNoLXRva2VuLWV4YW1wbGU=",
                 requiredMode = Schema.RequiredMode.REQUIRED
         )

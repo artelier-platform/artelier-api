@@ -57,13 +57,14 @@ public interface UserSessionRepository extends JpaRepository<UserSession, UUID> 
      * @param now         the timestamp when the rotation occurred
      * @return the number of updated database rows (1 if successful, 0 otherwise)
      */
-    @Modifying
+    @Modifying(clearAutomatically = true)
     @Query("""
     UPDATE UserSession s
     SET s.refreshTokenHash = :newHash,
         s.lastUsedAt = :now,
         s.previousRefreshTokenHash = :currentHash
     WHERE s.refreshTokenHash = :currentHash
+    AND revoked_at IS NULL
 """)
     int rotateRefreshTokenHash(
             @Param("currentHash") String currentHash,

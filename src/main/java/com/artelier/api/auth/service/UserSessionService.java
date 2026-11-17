@@ -1,6 +1,6 @@
 package com.artelier.api.auth.service;
 
-import com.artelier.api.auth.dto.request.IssuedSession;
+import com.artelier.api.auth.model.IssuedSession;
 import com.artelier.api.user.entity.User;
 import com.artelier.api.auth.enums.SessionRevocationReason;
 
