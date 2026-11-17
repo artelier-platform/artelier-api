@@ -1,9 +1,8 @@
-package com.artelier.api.auth.dto;
+package com.artelier.api.auth.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
-import com.artelier.api.user.entity.User;
 
 /**
  * Request containing the credentials required to authenticate a user.

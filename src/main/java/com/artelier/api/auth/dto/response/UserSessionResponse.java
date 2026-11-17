@@ -1,4 +1,4 @@
-package com.artelier.api.auth.dto;
+package com.artelier.api.auth.dto.response;
 
 import com.artelier.api.auth.enums.SessionRevocationReason;
 import io.swagger.v3.oas.annotations.media.Schema;

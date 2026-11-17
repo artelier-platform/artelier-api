@@ -1,9 +1,9 @@
 package com.artelier.api.auth.controller;
 
 import com.artelier.api.config.WithSecurity;
-import com.artelier.api.auth.dto.LoginRequest;
-import com.artelier.api.auth.dto.RegisterRequest;
-import com.artelier.api.auth.dto.AuthResponse;
+import com.artelier.api.auth.dto.request.LoginRequest;
+import com.artelier.api.auth.dto.request.RegisterRequest;
+import com.artelier.api.auth.dto.response.AuthResponse;
 import com.artelier.api.user.dto.UserProfileResponse;
 import com.artelier.api.user.enums.Role;
 import com.artelier.api.user.enums.UserStatus;
@@ -34,7 +34,6 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import com.artelier.api.user.entity.User;
 
 @WebMvcTest(AuthController.class)
 @WithSecurity
@@ -62,6 +61,23 @@ class AuthControllerTest {
                 "Geronimo01", "Geronimo", "Rodriguez", "+57", "3001234567",
                 null, null, UserStatus.PENDING_VERIFICATION, Role.BUYER, List.of(), null);
         return new AuthResponse("access-token", "refresh-token", "Bearer", 900, profile);
+    }
+
+    private static UserProfileResponse profileResponse() {
+        return new UserProfileResponse(
+                UUID.fromString("550e8400-e29b-41d4-a716-446655440000"),
+                "Geronimo01",
+                "Geronimo",
+                "Rodriguez",
+                "+57",
+                "3001234567",
+                null,
+                null,
+                UserStatus.PENDING_VERIFICATION,
+                Role.BUYER,
+                List.of(),
+                null
+        );
     }
 
     private static String loginJson(String identifier, String password) {
@@ -272,12 +288,20 @@ class AuthControllerTest {
     class Register {
 
         @Test
-        @DisplayName("201 – creates the account and returns the tokens")
+        @DisplayName("201 – creates the account and returns the user profile")
         void register_success() throws Exception {
             RegisterRequest expected = new RegisterRequest(
-                    "Geronimo01", "password123", "Geronimo", "Rodriguez",
-                    "user@example.com", "+57", "3001234567");
-            when(authService.register(expected)).thenReturn(authResponse());
+                    "Geronimo01",
+                    "password123",
+                    "Geronimo",
+                    "Rodriguez",
+                    "user@example.com",
+                    "+57",
+                    "3001234567"
+            );
+
+            when(authService.register(expected))
+                    .thenReturn(profileResponse());
 
             mockMvc.perform(post(REGISTER_URL)
                             .contentType(MediaType.APPLICATION_JSON)
@@ -285,9 +309,14 @@ class AuthControllerTest {
                     .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.success").value(true))
                     .andExpect(jsonPath("$.message").value("User registered successfully"))
-                    .andExpect(jsonPath("$.data.accessToken").value("access-token"))
-                    .andExpect(jsonPath("$.data.refreshToken").value("refresh-token"))
-                    .andExpect(jsonPath("$.data.user.username").value("Geronimo01"));
+                    .andExpect(jsonPath("$.data.username").value("Geronimo01"))
+                    .andExpect(jsonPath("$.data.firstName").value("Geronimo"))
+                    .andExpect(jsonPath("$.data.lastName").value("Rodriguez"))
+                    .andExpect(jsonPath("$.data.status").value("PENDING_VERIFICATION"))
+                    .andExpect(jsonPath("$.data.role").value("BUYER"))
+                    .andExpect(jsonPath("$.data.passwordHash").doesNotExist())
+                    .andExpect(jsonPath("$.data.accessToken").doesNotExist())
+                    .andExpect(jsonPath("$.data.refreshToken").doesNotExist());
 
             verify(authService).register(expected);
         }
@@ -295,12 +324,20 @@ class AuthControllerTest {
         @Test
         @DisplayName("201 – password of exactly 72 characters is accepted")
         void register_passwordAtMaxLength() throws Exception {
-            when(authService.register(any(RegisterRequest.class))).thenReturn(authResponse());
+            when(authService.register(any(RegisterRequest.class)))
+                    .thenReturn(profileResponse());
 
             mockMvc.perform(post(REGISTER_URL)
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content(registerJson("Geronimo01", "a".repeat(72), "Geronimo",
-                                    "Rodriguez", "user@example.com", "+57", "3001234567")))
+                            .content(registerJson(
+                                    "Geronimo01",
+                                    "a".repeat(72),
+                                    "Geronimo",
+                                    "Rodriguez",
+                                    "user@example.com",
+                                    "+57",
+                                    "3001234567"
+                            )))
                     .andExpect(status().isCreated());
         }
 

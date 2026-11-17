@@ -1,9 +1,9 @@
 package com.artelier.api.auth.service;
 
-import com.artelier.api.auth.dto.LoginRequest;
-import com.artelier.api.auth.dto.RegisterRequest;
-import com.artelier.api.auth.dto.AuthResponse;
-import com.artelier.api.auth.dto.IssuedSession;
+import com.artelier.api.auth.dto.request.LoginRequest;
+import com.artelier.api.auth.dto.request.RegisterRequest;
+import com.artelier.api.auth.dto.response.AuthResponse;
+import com.artelier.api.auth.dto.request.IssuedSession;
 import com.artelier.api.user.dto.UserProfileResponse;
 import com.artelier.api.user.entity.User;
 import com.artelier.api.auth.entity.UserSession;
@@ -31,6 +31,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.awt.color.ProfileDataException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -150,7 +151,7 @@ class AuthServiceTest {
             when(userMapper.toProfileResponse(any(User.class)))
                     .thenAnswer(inv -> profileOf(inv.getArgument(0)));
 
-            AuthResponse response = authService.register(registerRequest("Geronimo01"));
+            UserProfileResponse response = authService.register(registerRequest("Geronimo01"));
 
             ArgumentCaptor<User> saved = ArgumentCaptor.forClass(User.class);
             verify(userRepository).saveAndFlush(saved.capture());
@@ -164,11 +165,7 @@ class AuthServiceTest {
             assertThat(user.getRole()).isEqualTo(Role.BUYER);
             assertThat(user.getStatus()).isEqualTo(UserStatus.PENDING_VERIFICATION);
 
-            assertThat(response.accessToken()).isEqualTo("access-token");
-            assertThat(response.refreshToken()).isEqualTo("refresh-1");
-            assertThat(response.tokenType()).isEqualTo("Bearer");
-            assertThat(response.expiresIn()).isEqualTo(900L);
-            assertThat(response.user()).isEqualTo(profileOf(user));
+            assertThat(response).isEqualTo(profileOf(user));
 
             // The FK needs the user first; the session needs the user too.
             InOrder order = inOrder(userRepository, userEmailService, userSessionService);

@@ -1,4 +1,4 @@
-package com.artelier.api.auth.security;
+package com.artelier.api.shared.util;
 
 import io.jsonwebtoken.security.Keys;
 import lombok.Getter;

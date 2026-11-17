@@ -1,6 +1,6 @@
-package com.artelier.api.auth.security;
+package com.artelier.api.auth.util;
 
-import com.artelier.api.auth.security.Hasher;
+import com.artelier.api.shared.util.Hasher;
 import java.nio.charset.StandardCharsets;
 
 /**

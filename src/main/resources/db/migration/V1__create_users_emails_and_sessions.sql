@@ -145,6 +145,8 @@ CREATE TABLE user_sessions (
 
                                refresh_token_hash VARCHAR(255) NOT NULL,
 
+                               previous_refresh_token_hash VARCHAR(255),
+
                                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
                                last_used_at TIMESTAMPTZ,

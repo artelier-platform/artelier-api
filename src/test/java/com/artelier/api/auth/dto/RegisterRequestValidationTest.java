@@ -1,6 +1,6 @@
 package com.artelier.api.auth.dto;
 
-import com.artelier.api.auth.dto.RegisterRequest;
+import com.artelier.api.auth.dto.request.RegisterRequest;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
@@ -14,8 +14,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import com.artelier.api.user.entity.User;
-import com.artelier.api.verification.dto.PhoneVerificationRequest;
 
 @DisplayName("RegisterRequest validation")
 class RegisterRequestValidationTest {

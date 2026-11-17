@@ -1,6 +1,6 @@
 package com.artelier.api.auth.service.impl;
 
-import com.artelier.api.auth.dto.IssuedSession;
+import com.artelier.api.auth.dto.request.IssuedSession;
 import com.artelier.api.user.entity.User;
 import com.artelier.api.auth.entity.UserSession;
 import com.artelier.api.auth.enums.SessionRevocationReason;
@@ -8,7 +8,7 @@ import com.artelier.api.shared.exception.ArtelierException;
 import com.artelier.api.user.repository.UserRepository;
 import com.artelier.api.auth.repository.UserSessionRepository;
 import com.artelier.api.auth.security.UserJwtService;
-import com.artelier.api.auth.security.RefreshTokenHasher;
+import com.artelier.api.auth.util.RefreshTokenHasher;
 import com.artelier.api.auth.service.UserSessionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;

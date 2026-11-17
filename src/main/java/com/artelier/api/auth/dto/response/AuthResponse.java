@@ -1,7 +1,8 @@
-package com.artelier.api.auth.dto;
+package com.artelier.api.auth.dto.response;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import com.artelier.api.user.dto.UserProfileResponse;
+import lombok.Builder;
 
 /**
  * Response returned after successful user authentication.
@@ -22,6 +23,7 @@ import com.artelier.api.user.dto.UserProfileResponse;
         name = "AuthResponse",
         description = "Authentication response containing tokens and user information"
 )
+@Builder
 public record AuthResponse(
 
         @Schema(

@@ -1,4 +1,4 @@
-package com.artelier.api.auth.dto;
+package com.artelier.api.auth.dto.request;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
@@ -7,7 +7,6 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import java.util.Locale;
-import com.artelier.api.user.entity.User;
 
 
 /**

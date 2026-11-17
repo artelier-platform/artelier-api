@@ -1,5 +1,6 @@
 package com.artelier.api.auth.security;
 
+import com.artelier.api.auth.util.RefreshTokenHasher;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

@@ -1,8 +1,8 @@
 package com.artelier.api.verification.service.impl;
 
 import com.artelier.api.verification.service.EmailVerificationTokens;
-import com.artelier.api.auth.security.JwtTokenBuilder;
-import com.artelier.api.auth.security.JwtTokenParser;
+import com.artelier.api.shared.util.JwtTokenBuilder;
+import com.artelier.api.shared.util.JwtTokenParser;
 import io.jsonwebtoken.JwtException;
 import lombok.Getter;
 import org.springframework.beans.factory.annotation.Value;

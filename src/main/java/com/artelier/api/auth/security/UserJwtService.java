@@ -1,5 +1,7 @@
 package com.artelier.api.auth.security;
 
+import com.artelier.api.shared.util.JwtTokenBuilder;
+import com.artelier.api.shared.util.JwtTokenParser;
 import com.artelier.api.user.enums.Role;
 import io.jsonwebtoken.JwtException;
 import lombok.Getter;

@@ -99,8 +99,7 @@ public class JwtFilter extends OncePerRequestFilter {
         User user = userRepository.findById(userId).orElse(null);
 
         if (user == null ||
-                (user.getStatus() != UserStatus.ACTIVE &&
-                        user.getStatus() != UserStatus.PENDING_VERIFICATION)) {
+                (user.getStatus() != UserStatus.ACTIVE)) {
             SecurityContextHolder.clearContext();
             authenticationEntryPoint.commence(
                     request,

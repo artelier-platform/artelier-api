@@ -1,4 +1,4 @@
-package com.artelier.api.auth.security;
+package com.artelier.api.shared.util;
 
 import com.artelier.api.auth.exception.HashingException;
 import java.nio.charset.Charset;

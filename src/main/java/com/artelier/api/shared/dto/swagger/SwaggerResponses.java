@@ -2,7 +2,7 @@
 package com.artelier.api.shared.dto.swagger;
 
 import com.artelier.api.shared.dto.AppResponse;
-import com.artelier.api.auth.dto.AuthResponse;
+import com.artelier.api.auth.dto.response.AuthResponse;
 import com.artelier.api.banner.dto.BannerResponse;
 import com.artelier.api.catalog.dto.CategoryResponse;
 import com.artelier.api.banner.dto.ItemBannerResponse;

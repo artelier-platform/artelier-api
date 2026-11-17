@@ -1,17 +1,17 @@
 package com.artelier.api.auth.controller;
 
-import com.artelier.api.auth.dto.LoginRequest;
-import com.artelier.api.auth.dto.RefreshTokenRequest;
-import com.artelier.api.auth.dto.RegisterRequest;
+import com.artelier.api.auth.dto.request.LoginRequest;
+import com.artelier.api.auth.dto.request.RefreshTokenRequest;
+import com.artelier.api.auth.dto.request.RegisterRequest;
 import com.artelier.api.shared.dto.AppResponse;
-import com.artelier.api.auth.dto.AuthResponse;
+import com.artelier.api.auth.dto.response.AuthResponse;
 import com.artelier.api.auth.service.AuthService;
+import com.artelier.api.user.dto.UserProfileResponse;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import com.artelier.api.user.entity.User;
 
 @AllArgsConstructor
 @RestController
@@ -21,12 +21,12 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/register")
-    public ResponseEntity<AppResponse<AuthResponse>> register(
+    public ResponseEntity<AppResponse<UserProfileResponse>> register(
             @Valid @RequestBody RegisterRequest request
     ) {
-        AuthResponse auth = authService.register(request);
+        UserProfileResponse userProfileResponse = authService.register(request);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(AppResponse.success("User registered successfully", auth));
+                .body(AppResponse.success("User registered successfully", userProfileResponse));
     }
 
     @PostMapping("/login")

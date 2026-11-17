@@ -3,7 +3,7 @@ package com.artelier.api.shared.config;
 import com.artelier.api.auth.security.CustomAccessDeniedHandler;
 import com.artelier.api.auth.security.CustomAuthenticationEntryPoint;
 import com.artelier.api.auth.security.JwtFilter;
-import com.artelier.api.auth.security.SecurityRoutes;
+import com.artelier.api.auth.util.SecurityRoutes;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
