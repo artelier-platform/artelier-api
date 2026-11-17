@@ -1,6 +1,8 @@
 package com.artelier.api.auth.util;
 
 import com.artelier.api.shared.util.Hasher;
+import org.springframework.stereotype.Component;
+
 import java.nio.charset.StandardCharsets;
 
 /**
@@ -8,6 +10,7 @@ import java.nio.charset.StandardCharsets;
  * Uses SHA-256 with UTF-8 encoding to generate deterministic hashes
  * that can be safely stored instead of raw refresh tokens.
  */
+@Component
 public class RefreshTokenHasher {
 
     /**
