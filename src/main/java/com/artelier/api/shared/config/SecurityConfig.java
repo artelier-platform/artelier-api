@@ -17,6 +17,10 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+/**
+ * Spring Security configuration class defining the security filter chain,
+ * authorization rules, exception handling, and stateless session policies.
+ */
 @Slf4j
 @AllArgsConstructor
 @Configuration
@@ -28,20 +32,22 @@ public class SecurityConfig {
     private final CustomAuthenticationEntryPoint authenticationEntryPoint;
     private final CustomAccessDeniedHandler accessDeniedHandler;
 
+    /**
+     * Configures the security filter chain for HTTP security requests.
+     *
+     * @param http the {@link HttpSecurity} builder to configure
+     * @return the built {@link SecurityFilterChain}
+     */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) {
-
         http
                 .cors(Customizer.withDefaults())
 
                 .csrf(AbstractHttpConfigurer::disable)
 
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(SecurityRoutes.PUBLIC_ROUTES).permitAll()
-                        .requestMatchers(
-                                HttpMethod.GET,
-                                SecurityRoutes.PUBLIC_GET_ROUTES
-                        ).permitAll()
+                        .requestMatchers(SecurityRoutes.PUBLIC_ROUTES.toArray(String[]::new)).permitAll()
+                        .requestMatchers(HttpMethod.GET, SecurityRoutes.PUBLIC_GET_ROUTES.toArray(String[]::new)).permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
