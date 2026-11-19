@@ -1,8 +1,9 @@
 services:
 
-  # ─────────────────────────────────────────────
-  # PostgreSQL
-  # ─────────────────────────────────────────────
+  # ---------------------------------------------------------------------------
+  # PostgreSQL Database
+  # Relational store for application entities, sessions, and Flyway migrations.
+  # ---------------------------------------------------------------------------
   db:
     image: postgres:16-alpine
     restart: unless-stopped
@@ -11,54 +12,67 @@ services:
       POSTGRES_USER: ${DB_USERNAME}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
+      # Expose PostgreSQL on the configured host port for local/external tooling.
       - "${DB_PORT}:5432"
     volumes:
+      # Persist database files across container restarts and recreations.
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
+      # Verify PostgreSQL accepts connections before dependent services start.
       test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_NAME}"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # ─────────────────────────────────────────────
-  # Redis
-  # ─────────────────────────────────────────────
+  # ---------------------------------------------------------------------------
+  # Redis Cache / Session Store
+  # In-memory store with AOF persistence enabled for fast state/session lookups.
+  # ---------------------------------------------------------------------------
   redis:
     image: redis:7-alpine
     restart: unless-stopped
+    # Enable Append-Only File (AOF) persistence to survive container restarts.
     command: redis-server --appendonly yes
     ports:
-      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+      # Bind exclusively to localhost to avoid exposing Redis to external networks.
+      - "127.0.0.1:${SPRING_DATA_REDIS_PORT:-6379}:6379"
     volumes:
+      # Persist AOF/RDB data outside the ephemeral container filesystem.
       - redis_data:/data
     healthcheck:
+      # Confirm Redis responds to PING before marking the service healthy.
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-
-  # ─────────────────────────────────────────────
-  # Artelier API
-  # ─────────────────────────────────────────────
+  # ---------------------------------------------------------------------------
+  # Artelier API (Spring Boot)
+  # Main backend service built from the local multi-stage Dockerfile.
+  # ---------------------------------------------------------------------------
   api:
     build: .
     restart: unless-stopped
     ports:
+      # Map external host port to container port 8080.
       - "${SERVER_PORT}:8080"
     env_file:
+      # Load application secrets and environment configuration from .env.
       - .env
     environment:
-      # Override DB_HOST to point to the postgres service
+      # Override host/URL values to target internal Docker Compose service names.
       DB_HOST: db
-      # Override full datasource URL — removes sslmode=require for local dev
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:${DB_PORT}/${DB_NAME}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
     depends_on:
+      # Wait until both database and cache pass their healthchecks.
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
 
+# Named volumes managed by Docker for stateful persistence.
 volumes:
   postgres_data:
   redis_data:

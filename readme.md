@@ -215,6 +215,7 @@ Swagger UI: `http://localhost:8080/swagger-ui.html`
 
 ```bash
 docker compose up -d
+
 ```
 
 Builds the application image using the multi-stage `Dockerfile` and starts
@@ -230,18 +231,20 @@ for local development.
 
 ## ⚙️ Environment Variables
 
-Copy `.env.example` and fill in the following:
+Copy `.env.example.dev` (for local development) or `.env.example.prod` (for production) to `.env` and fill in the values:
 
 ```env
 #################################
-# APP
+# APPLICATION
 #################################
+
 APP_NAME=artelier-api
 SERVER_PORT=8080
 
 #################################
-# DATABASE
+# DATABASE (POSTGRESQL)
 #################################
+
 DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=artelier
@@ -249,15 +252,19 @@ DB_USERNAME=postgres
 DB_PASSWORD=postgres
 
 #################################
-# JWT
+# JWT SECURITY
 #################################
+
 JWT_SECRET=change_this_to_a_very_long_secure_secret_key_123456
-JWT_EXPIRATION_MS=900000           # 15 minutes
+JWT_KEY_ID=v1-secret-key-example
+JWT_ISSUER=https://api.yourecommerce.com
+JWT_EXPIRATION_MS=900000
 JWT_REFRESH_EXPIRATION_DAYS=7
 
 #################################
-# CLOUDINARY
+# CLOUDINARY (MEDIA STORAGE)
 #################################
+
 CLOUDINARY_CLOUD_NAME=your_cloud_name
 CLOUDINARY_API_KEY=your_api_key
 CLOUDINARY_API_SECRET=your_api_secret
@@ -265,48 +272,70 @@ CLOUDINARY_API_SECRET=your_api_secret
 #################################
 # CORS
 #################################
+
+# Comma-separated list of allowed origins (do NOT include trailing slashes)
 CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
 
 #################################
-# FLYWAY
+# FLYWAY & JPA
 #################################
-FLYWAY_ENABLED=true
 
-#################################
-# JPA
-#################################
+FLYWAY_ENABLED=true
 JPA_DDL_AUTO=validate
 JPA_SHOW_SQL=false
 
 #################################
-# SWAGGER
+# SWAGGER / OPENAPI
 #################################
+
 SWAGGER_ENABLED=true
 
 #################################
-# ACTUATOR
+# SPRING ACTUATOR
 #################################
+
 ACTUATOR_EXPOSE=health,info,metrics
 
 #################################
-# WOMPI
+# WOMPI (PAYMENT GATEWAY)
 #################################
-WOMPI_EVENTS_KEY=test_events_xxx
+
+WOMPI_BASE_URL=https://sandbox.wompi.co/v1
 WOMPI_PUBLIC_KEY=pub_test_xxx
 WOMPI_PRIVATE_KEY=priv_test_xxx
+WOMPI_EVENTS_KEY=test_events_xxx
 WOMPI_INTEGRITY_SECRET=test_integrity_xxx
-WOMPI_BASE_URL=https://sandbox.wompi.co/v1
-WOMPI_REDIRECT_URL=https://your-frontend.com/payment/result
+WOMPI_REDIRECT_URL=https://your-frontend-sandbox.com/payment/result
 
 #################################
-# CAFFEINE CACHE
+# BREVO (EMAIL SERVICE)
 #################################
+
+BREVO_API_KEY=your_api_key_here
+BREVO_BASE_URL=https://api.brevo.com
+BREVO_SENDER_NAME="Artelier Cajica"
+BREVO_SENDER_EMAIL=arteliercajica@gmail.com
+BREVO_TEMPLATE_AUTH_VERIFICATION=1
+
+#################################
+# CAFFEINE (IN-MEMORY CACHE)
+#################################
+
 CAFFEINE_MAXIMUM_SIZE=500
-CAFFEINE_EXPIRE_AFTER_WRITE=5m
+CAFFEINE_EXPIRE_AFTER_WRITE=10m
+
+#################################
+# REDIS (DISTRIBUTED CACHE)
+#################################
+
+SPRING_DATA_REDIS_HOST=redis
+SPRING_DATA_REDIS_PORT=6379
+
 ```
 
 > ⚠️ Never commit your real `.env`. It is already in `.gitignore`.
 
+---
 ---
 
 ## ☁️ Deployment & Infrastructure
