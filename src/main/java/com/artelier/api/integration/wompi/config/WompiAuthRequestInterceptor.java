@@ -1,14 +1,12 @@
 package com.artelier.api.integration.wompi.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
 import feign.RequestInterceptor;
 import feign.RequestTemplate;
-import feign.codec.ErrorDecoder;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 
-@Configuration
+@Component
 public class WompiAuthRequestInterceptor implements RequestInterceptor {
 
     @Value("${wompi.private-key}")
@@ -17,10 +15,5 @@ public class WompiAuthRequestInterceptor implements RequestInterceptor {
     @Override
     public void apply(RequestTemplate template) {
         template.header("Authorization", "Bearer " + privateKey);
-    }
-
-    @Bean
-    public ErrorDecoder wompiErrorDecoder() {
-        return new WompiErrorDecoder(new ObjectMapper());
     }
 }

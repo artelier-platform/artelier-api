@@ -55,7 +55,7 @@ public interface UserSessionRepository extends JpaRepository<UserSession, UUID> 
         s.lastUsedAt = :now,
         s.previousRefreshTokenHash = :currentHash
     WHERE s.refreshTokenHash = :currentHash
-    AND revoked_at IS NULL
+      AND s.revokedAt IS NULL
 """)
     int rotateRefreshTokenHash(
             @Param("currentHash") String currentHash,

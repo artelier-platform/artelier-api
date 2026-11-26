@@ -55,17 +55,14 @@ public class AuthServiceImpl implements AuthService {
                     );
                 });
 
-        UUID userId = UUID.randomUUID();
 
         User user = User.builder()
-                .id(userId)
                 .username(registerRequest.username())
                 .passwordHash(passwordEncoder.encode(registerRequest.password()))
                 .firstName(registerRequest.firstName())
                 .lastName(registerRequest.lastName())
                 .phoneCountryCode(registerRequest.phoneCountryCode())
                 .phoneNumber(registerRequest.phoneNumber())
-                .createdAt(Instant.now())
                 .role(Role.BUYER)
                 .status(UserStatus.PENDING_VERIFICATION)
                 .build();
@@ -73,7 +70,7 @@ public class AuthServiceImpl implements AuthService {
         userRepository.save(user);
 
         userEmailService.addEmail(
-                userId,
+                user.getId(),
                 registerRequest.email()
         );
 

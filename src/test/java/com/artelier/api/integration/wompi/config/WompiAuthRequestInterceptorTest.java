@@ -38,15 +38,15 @@ class WompiAuthRequestInterceptorTest {
         assertThat(template.headers().get("Authorization"))
                 .containsExactly("Bearer prv_test_123456");
     }
-
-    @Test
-    void wompiErrorDecoder_ShouldReturnWompiErrorDecoderInstance() {
-        // Act
-        ErrorDecoder decoder = interceptor.wompiErrorDecoder();
-
-        // Assert
-        assertThat(decoder)
-                .isNotNull()
-                .isInstanceOf(WompiErrorDecoder.class);
-    }
+//
+//    @Test
+//    void wompiErrorDecoder_ShouldReturnWompiErrorDecoderInstance() {
+//        // Act
+//        ErrorDecoder decoder = interceptor.wompiErrorDecoder();
+//
+//         Assert
+//        assertThat(decoder)
+//                .isNotNull()
+//                .isInstanceOf(WompiErrorDecoder.class);
+//    }
 }

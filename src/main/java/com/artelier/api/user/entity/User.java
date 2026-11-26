@@ -14,6 +14,8 @@ import java.util.UUID;
 import com.artelier.api.auth.entity.UserSession;
 import com.artelier.api.order.entity.Order;
 import com.artelier.api.review.entity.Review;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(
@@ -74,12 +76,14 @@ public class User {
     private String profileImagePublicId;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 30)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(nullable = false)
     @Builder.Default
     private UserStatus status = UserStatus.PENDING_VERIFICATION;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Column(nullable = false)
     private Role role;
 
     @Column(nullable = false, updatable = false)
