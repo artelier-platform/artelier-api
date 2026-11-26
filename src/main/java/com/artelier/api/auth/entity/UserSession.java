@@ -8,6 +8,8 @@ import lombok.*;
 import java.time.Instant;
 import java.util.UUID;
 import com.artelier.api.user.entity.User;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 /**
  * Persistent entity representing an active or historical user authentication session.
@@ -86,6 +88,7 @@ public class UserSession {
      */
     @Enumerated(EnumType.STRING)
     @Column(length = 40)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private SessionRevocationReason revocationReason;
 
     /**

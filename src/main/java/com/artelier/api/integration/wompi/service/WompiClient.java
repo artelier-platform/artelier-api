@@ -1,6 +1,7 @@
 package com.artelier.api.integration.wompi.service;
 
 import com.artelier.api.integration.wompi.config.WompiAuthRequestInterceptor;
+import com.artelier.api.integration.wompi.config.WompiFeignConfig;
 import com.artelier.api.integration.wompi.dto.request.WompiTransactionRequest;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
@@ -11,7 +12,7 @@ import com.artelier.api.integration.wompi.dto.response.WompiTransactionResponse;
 @FeignClient(
         name = "wompi",
         url = "${wompi.base-url}",
-        configuration = WompiAuthRequestInterceptor.class
+        configuration = WompiFeignConfig.class
 )
 public interface WompiClient {
 
